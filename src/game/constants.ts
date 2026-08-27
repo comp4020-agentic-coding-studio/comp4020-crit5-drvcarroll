@@ -31,6 +31,7 @@ export const MAX_PLANETS_PER_LEVEL = 10;
 
 // World
 export const LANE_HALF_WIDTH = 340; // horizontal play-field half-width
+export const DESPAWN_BEHIND = 1200; // remove asteroids this far behind the ship
 
 // UI
 export const FLOURISH_DURATION = 1.2; // seconds the level-up flash is shown
