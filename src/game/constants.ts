@@ -28,6 +28,10 @@ export const REQ_PER_RADIUS = 0.9; // colonistsRequired = round(radius * this)
 export const PLANET_GAP_SCROLL = 900; // world units of scroll between planets
 export const BASE_PLANETS_PER_LEVEL = 3;
 export const MAX_PLANETS_PER_LEVEL = 10;
+// The opening frame's pre-activated planet sits this close, not at its
+// plan-generated scrollY --- so it's already in view on the first frame,
+// with no instruction needed to say "look, a planet".
+export const OPENING_PLANET_SCROLLY = 260;
 
 // World
 export const LANE_HALF_WIDTH = 340; // horizontal play-field half-width
