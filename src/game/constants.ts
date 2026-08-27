@@ -37,5 +37,11 @@ export const OPENING_PLANET_SCROLLY = 260;
 export const LANE_HALF_WIDTH = 340; // horizontal play-field half-width
 export const DESPAWN_BEHIND = 1200; // remove asteroids this far behind the ship
 
+// Gravity
+export const GRAVITY_RADIUS_MULT = 6; // well radius = planet.radius * this
+export const GRAVITY_STRENGTH = 4000; // accel = this * radius / distSq, capped
+export const GRAVITY_MAX_ACCEL = 90; // world units / s^2, holds near the surface
+export const GRAVITY_SOFTENING = 400; // added to distSq so pull can't spike
+
 // UI
 export const FLOURISH_DURATION = 1.2; // seconds the level-up flash is shown
