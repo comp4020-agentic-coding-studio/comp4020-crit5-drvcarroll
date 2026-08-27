@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COMP4020 prototype</title>
+    <title>Colony Run</title>
     <meta
       name="description"
-      content="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+      content="A top-down rocket colonisation arcade game: land gently on planets, dodge or shoot asteroids, keep colonising."
     />
 
     <!--
@@ -21,18 +21,34 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header>
+    <a class="visually-hidden" href="#game">Skip to game</a>
+    <header class="visually-hidden">
       <nav aria-label="Primary">
         <a href="./">Home</a>
       </nav>
+      <h1>Colony Run</h1>
     </header>
-    <main>
-      <h1>COMP4020 prototype</h1>
-      <p>
-        Replace this with your prototype. This week's brief is on the course website;
-        <code>spec/README.md</code> explains how the checks in this repo relate to it.
-      </p>
+    <main id="game">
       <canvas id="scene"></canvas>
+
+      <div id="hud">
+        <div class="meter" data-meter="colonists" role="meter" aria-label="Colonists" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1">
+          <div class="meter-fill"></div>
+        </div>
+        <div class="meter" data-meter="fuel" role="meter" aria-label="Fuel" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1">
+          <div class="meter-fill"></div>
+        </div>
+        <div class="meter" data-meter="ammo" role="meter" aria-label="Ammo" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1">
+          <div class="meter-fill"></div>
+        </div>
+      </div>
+
+      <div id="touch-controls">
+        <button type="button" class="pad" data-action="rotateLeft" aria-label="Rotate left"></button>
+        <button type="button" class="pad" data-action="thrust" aria-label="Thrust"></button>
+        <button type="button" class="pad" data-action="rotateRight" aria-label="Rotate right"></button>
+        <button type="button" class="pad pad-fire" data-action="fire" aria-label="Fire"></button>
+      </div>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>
