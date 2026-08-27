@@ -16,7 +16,8 @@ const NO_INPUT = { rotateLeft: false, rotateRight: false, thrust: false, fire: f
 describe("tick", () => {
   it("moves the ship by its velocity over dt", () => {
     const base = createInitialState(SEED);
-    const state = { ...base, ship: { ...base.ship, velocity: { x: 10, y: 0 } } };
+    // No planets in range: isolates movement from gravity (see gravity.test.ts).
+    const state = { ...base, ship: { ...base.ship, velocity: { x: 10, y: 0 } }, planets: [] };
     const next = tick(state, NO_INPUT, 1);
     expect(next.ship.position.x).toBeCloseTo(10);
   });
@@ -46,6 +47,28 @@ describe("tick", () => {
     const next = tick(state, NO_INPUT, 1 / 60);
     expect(next.ship.colonists).toBeLessThan(base.ship.colonists);
     expect(next.asteroids).toHaveLength(0);
+  });
+
+  it("gravity pulls a coasting ship closer, with nonzero inward velocity", () => {
+    const base = createInitialState(SEED);
+    const planet = { ...base.planets[0], position: { x: 0, y: 300 }, radius: 40 };
+    const ship = { ...base.ship, position: { x: 0, y: 150 }, velocity: { x: 0, y: 0 } };
+    const state = { ...base, ship, planets: [planet] };
+    const next = tick(state, NO_INPUT, 1 / 60);
+    expect(next.ship.position.y).toBeGreaterThan(ship.position.y);
+    expect(next.ship.velocity.y).toBeGreaterThan(0);
+  });
+
+  it("gravity can turn a borderline-gentle approach into a crash", () => {
+    const base = createInitialState(SEED);
+    const planet = { ...base.planets[0], position: { x: 0, y: 0 }, radius: 200 };
+    // Just under the landing threshold on its own; already inside the
+    // planet's radius, so this tick's landing check fires immediately.
+    const ship = { ...base.ship, position: { x: 0, y: 150 }, velocity: { x: 0, y: -39 } };
+    const state = { ...base, ship, planets: [planet] };
+    const next = tick(state, NO_INPUT, 1);
+    expect(next.planets[0].colonized).toBe(false);
+    expect(next.ship.colonists).toBe(ship.colonists);
   });
 });
 

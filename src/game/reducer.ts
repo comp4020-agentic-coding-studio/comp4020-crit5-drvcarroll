@@ -3,6 +3,7 @@ import { circlesOverlap, isGentleLanding } from "./collisions.ts";
 import { colonistBatchForLevel, fuelAmmoTopUpFraction, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
 import { add, fromAngle, scale } from "./vector.ts";
+import { applyGravity } from "./gravity.ts";
 import { applyInput } from "./ship.ts";
 import type { EndState, GameState, Input, Planet } from "./types.ts";
 
@@ -173,7 +174,8 @@ export function checkEndCondition(state: GameState): EndState {
 export function tick(state: GameState, input: Input, dt: number): GameState {
   if (state.end.status === "lost") return state;
 
-  let next = { ...state, ship: applyInput(state.ship, input, dt) };
+  const pulled = applyGravity(state.ship, state.planets, dt);
+  let next = { ...state, ship: applyInput(pulled, input, dt) };
   next = { ...next, scrollY: Math.max(next.scrollY, next.ship.position.y) };
   next = advanceProjectiles(next, dt);
   next = activatePlannedPlanets(next);
