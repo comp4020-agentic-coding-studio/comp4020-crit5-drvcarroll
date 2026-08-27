@@ -93,11 +93,15 @@ Judged:
    planets, rather than an estimate. Planets are merely *activated* as
    scroll reaches their planned position; asteroids stay genuinely
    endless/procedural since they have no fixed total to sum against.
-2. **Level-complete is checked and resolved inside `tick`, before the loss
-   check runs, every frame.** This makes "the deposit that spends the last
-   colonist while also completing the level" a win, not a loss, as a
-   consequence of ordering, not a special-cased branch --- the one rule J2's
-   focused test targets.
+2. **Level-complete outranks a loss, and the guard lives inside
+   `checkEndCondition` itself, not only in `tick`'s call order.**
+   `checkEndCondition` checks `colonizedCount >= planetsRequired` first and
+   returns `"playing"` before it looks at colonists or fuel, so a caller
+   that invokes it directly on a post-landing state (as `spec/game.test.ts`
+   does) still gets the win reading --- `tick` additionally resolves
+   `advanceLevel` before ever calling it, so the ordering reinforces the
+   guard rather than being the only thing enforcing it. This is the one
+   rule J2's focused test targets.
 3. **Landing too fast is a pure no-op:** no deposit, no penalty, no state
    change. Anything else would create a second, unstated wrong-move
    mechanism, diluting C2's one canonical loss path (colonists or fuel
