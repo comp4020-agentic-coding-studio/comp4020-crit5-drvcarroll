@@ -18,10 +18,12 @@ function ship(overrides: Partial<Ship> = {}): Ship {
 
 describe("applyInput", () => {
   it("rotates left/right without moving", () => {
-    const right = applyInput(ship(), { ...NO_INPUT, rotateRight: true }, 1);
-    expect(right.heading).toBeGreaterThan(0);
+    // toWorld()'s Y-flip mirrors on-screen rotation sense: rotateLeft
+    // increases heading, rotateRight decreases it (see ship.ts comment).
     const left = applyInput(ship(), { ...NO_INPUT, rotateLeft: true }, 1);
-    expect(left.heading).toBeLessThan(0);
+    expect(left.heading).toBeGreaterThan(0);
+    const right = applyInput(ship(), { ...NO_INPUT, rotateRight: true }, 1);
+    expect(right.heading).toBeLessThan(0);
   });
 
   it("thrusting accelerates along the current heading and drains fuel", () => {
