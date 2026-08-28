@@ -1,4 +1,5 @@
 import {
+  FUEL_DRAIN_PASSIVE,
   FUEL_PER_THRUST_TICK,
   RETRO_ACCEL,
   ROTATE_SPEED,
@@ -26,7 +27,9 @@ export function applyInput(ship: Ship, input: Input, dt: number): Ship {
   const retroing = input.retro && ship.fuel > 0;
 
   let velocity = ship.velocity;
-  let fuel = ship.fuel;
+  // Ambient drain runs whatever the input --- the clock a do-nothing
+  // pilot can't stop (C2).
+  let fuel = Math.max(0, ship.fuel - FUEL_DRAIN_PASSIVE * dt);
 
   if (thrusting) {
     velocity = add(velocity, fromAngle(heading, THRUST_ACCEL * dt));

@@ -10,7 +10,7 @@ import {
   PLANET_CRASH_DAMAGE_SCALE,
 } from "./constants.ts";
 import { circlesOverlap, isGentleLanding, resolvePlanetContact } from "./collisions.ts";
-import { isOutsideFrame } from "./frame.ts";
+import { clampToFrame, isOutsideFrame } from "./frame.ts";
 import { colonistBatchForLevel, fuelAmmoTopUpFraction, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
 import { advanceScroll, driftEntities, scrollSpeedForLevel } from "./scroll.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
@@ -199,7 +199,13 @@ function resolveShipPlanetContact(state: GameState): GameState {
   const preContactVelocity = state.ship.velocity;
   const gentle = isGentleLanding(state.ship, target, planetVelocity);
 
-  const contacted = { ...state, ship: resolvePlanetContact(state.ship, target, planetVelocity) };
+  // The surface point can sit past the frame clamp near a large planet
+  // close to the edge (R8 finding) --- Decision R3 says the ship never
+  // leaves the frame, so reclamp same as any other contact.
+  const contacted = {
+    ...state,
+    ship: clampToFrame(resolvePlanetContact(state.ship, target, planetVelocity)),
+  };
 
   return gentle
     ? attemptLanding(contacted, target.id)

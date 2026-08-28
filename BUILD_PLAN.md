@@ -956,6 +956,36 @@ that is its purpose, and any it finds are fixed here before moving on.
 *Serves:* R11, C2, J2 (this is the strongest automated-test evidence the
 deliverable has).
 
+*Re-align (post-R8):* `harness.ts` (pure `Pilot`/`simulate`, no
+describe/it) is split from `pilots.ts` (the five pilots),
+`simInvariants.ts` (the one reusable `assertInvariants`, called from
+every pilot's `onStep`), `playthrough.test.ts` (describe/it per pilot) and
+`determinism.test.ts` --- five files instead of two, each independently
+readable and none re-implementing another's assertions.
+
+Two real `src/game/*` bugs surfaced and were fixed, smallest-scope first:
+
+- **No idle-loss guarantee (C2).** Fuel only drained while thrusting, so
+  `idlePilot` could sit forever, contradicting C2's "play ends somewhere."
+  Fix: `FUEL_DRAIN_PASSIVE` (constants.ts), applied unconditionally every
+  tick in `ship.ts`'s `applyInput` --- an idle ship now loses to fuel by
+  t=80s, inside the 90s bound.
+- **Planet contact could push the ship past the frame clamp (risk #3).**
+  `resolvePlanetContact` places the ship at `planet.position + direction *
+  planet.radius`; near a large planet close to an edge that surface point
+  can sit outside `CLAMP_X`/`CLAMP_Y`, violating Decision R3 ("the ship
+  never leaves the frame"). Fix: `reducer.ts`'s `resolveShipPlanetContact`
+  now reclamps with `clampToFrame` after `resolvePlanetContact`, the same
+  as any other wall contact.
+
+`seekPilot` needed a per-axis proportional controller (independent
+closing-velocity caps on x and y) rather than one normalized direction
+vector, so a large vertical gap to a falling planet can never starve
+lateral correction --- that was pilot-authoring, not a `src/game/*` bug.
+The determinism hash is committed for seekPilot @ seed 42, 2000 steps; its
+value carries no meaning, only its stability does --- a diff here on an
+unrelated change is a tuning regression to look at, not silence to fix.
+
 **R9. Fixed timestep.** Rewrite `loop.ts` as an accumulator (`FIXED_DT`,
 `MAX_ACCUMULATOR`, render once per rAF regardless of tick count). Expose
 `window.__game` under dev-or-`?test=1`. Tests: the accumulator runs the
