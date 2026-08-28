@@ -21,6 +21,11 @@ export const ASTEROID_SPEED_MAX = 90;
 export const BASE_ASTEROID_RATE = 0.15; // spawns / s at level 0
 export const DIFFICULTY_STEP = 0.35; // spawn-rate growth per level
 
+// Scroll (world drift speed --- see BUILD_PLAN.md Decision R2)
+export const SCROLL_SPEED_BASE = 95; // world units / s at level 0
+export const SCROLL_SPEED_PER_LEVEL = 18;
+export const SCROLL_SPEED_MAX = 220;
+
 // Planets
 export const PLANET_MIN_RADIUS = 30;
 export const PLANET_MAX_RADIUS = 70;

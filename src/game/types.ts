@@ -46,6 +46,13 @@ export interface LevelPlan {
   planets: PlanetSpec[];
 }
 
+// Odometer, not a camera position: distance drifted, and the speed that
+// drift is currently happening at (see BUILD_PLAN.md 2.2).
+export interface Scroll {
+  speed: number;
+  distance: number;
+}
+
 export interface LevelState {
   index: number;
   plan: LevelPlan;
