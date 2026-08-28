@@ -37,6 +37,12 @@ export const OPENING_PLANET_SCROLLY = 260;
 export const LANE_HALF_WIDTH = 340; // horizontal play-field half-width
 export const DESPAWN_BEHIND = 1200; // remove asteroids this far behind the ship
 
+// Frame (the fixed play area a scrolling world drifts through --- see
+// BUILD_PLAN.md Decision R1/R2)
+export const FRAME_HALF_WIDTH = 360; // frame is 720 world units wide
+export const FRAME_HALF_HEIGHT = 450; // frame is 900 world units tall
+export const SHIP_EDGE_MARGIN = 18; // clamp inset, so the rocket never half-exits
+
 // Gravity
 export const GRAVITY_RADIUS_MULT = 6; // well radius = planet.radius * this
 export const GRAVITY_STRENGTH = 4000; // accel = this * radius / distSq, capped

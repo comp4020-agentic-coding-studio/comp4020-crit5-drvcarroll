@@ -803,11 +803,14 @@ viewports** → one commit → re-align this plan. Run the whole phase start to
 finish; do not stop at a step boundary to ask.
 
 **R1. Seams and scaffolding.** Add `spec/boundaries.test.ts` (both structural
-tests, §7.1) and `src/game/index.ts`. Add `src/game/frame.ts` with
-`FRAME_*` constants, `clampToFrame`, `isOutsideFrame`, fully unit-tested
-against corners, exact-boundary and far-outside cases. Nothing else changes
-yet, and the camera guard is expected to **fail** at this point --- commit it
+tests, §7.1). Add `src/game/frame.ts` with `FRAME_*` constants,
+`clampToFrame`, `isOutsideFrame`, fully unit-tested against corners,
+exact-boundary and far-outside cases. Nothing else changes yet, and the
+camera guard is expected to **fail** at this point --- commit it
 red-documented as a skipped test with a `TODO(R4)`, then un-skip in R4.
+*Amendment:* `src/game/index.ts` (the public surface §5.1 describes) is
+deferred to whichever later step first gives `src/render`/`spec` a reason to
+import through it, rather than created empty here.
 *Serves:* the foundation for every step below.
 
 **R2. The scroll model.** New `src/game/scroll.ts`:
