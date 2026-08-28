@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ASTEROID_ANGLE_SPREAD, FRAME_HALF_HEIGHT } from "./constants.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
 import { generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
 import type { LevelState } from "./types.ts";
@@ -24,7 +25,7 @@ describe("decidePlanetActivation", () => {
   it("returns the next planned planet once scroll reaches it", () => {
     const level = levelState();
     const next = level.plan.planets[0];
-    expect(decidePlanetActivation(level, next.scrollY)).toBe(next);
+    expect(decidePlanetActivation(level, next.atScroll)).toBe(next);
   });
 
   it("returns null once every planned planet has been activated", () => {
@@ -36,7 +37,7 @@ describe("decidePlanetActivation", () => {
 describe("decideAsteroidSpawn", () => {
   it("never mutates the rng state it was given", () => {
     const rng = { seed: 5 };
-    decideAsteroidSpawn(rng, { scrollY: 0, levelIndex: 0, dt: 1 });
+    decideAsteroidSpawn(rng, { levelIndex: 0, dt: 1 });
     expect(rng).toEqual({ seed: 5 });
   });
 
@@ -44,7 +45,7 @@ describe("decideAsteroidSpawn", () => {
     let hits = 0;
     let rng = { seed: 1 };
     for (let i = 0; i < 50; i++) {
-      const result = decideAsteroidSpawn(rng, { scrollY: 0, levelIndex: 10, dt: 1 });
+      const result = decideAsteroidSpawn(rng, { levelIndex: 10, dt: 1 });
       if (result.asteroid) hits++;
       rng = result.rng;
     }
@@ -55,12 +56,41 @@ describe("decideAsteroidSpawn", () => {
     let rng = { seed: 1 };
     let asteroid = null;
     for (let i = 0; i < 20 && !asteroid; i++) {
-      const result = decideAsteroidSpawn(rng, { scrollY: 0, levelIndex: 10, dt: 1 });
+      const result = decideAsteroidSpawn(rng, { levelIndex: 10, dt: 1 });
       asteroid = result.asteroid;
       rng = result.rng;
     }
     expect(asteroid).not.toBeNull();
     expect(asteroid!.radius).toBeGreaterThan(0);
     expect(asteroid!.velocity.x !== 0 || asteroid!.velocity.y !== 0).toBe(true);
+  });
+
+  it("enters at the top edge of the frame", () => {
+    let rng = { seed: 1 };
+    let asteroid = null;
+    for (let i = 0; i < 20 && !asteroid; i++) {
+      const result = decideAsteroidSpawn(rng, { levelIndex: 10, dt: 1 });
+      asteroid = result.asteroid;
+      rng = result.rng;
+    }
+    expect(asteroid).not.toBeNull();
+    expect(asteroid!.position.y).toBeCloseTo(FRAME_HALF_HEIGHT + asteroid!.radius);
+  });
+
+  it("stays within ASTEROID_ANGLE_SPREAD of horizontal over 5000 draws", () => {
+    let rng = { seed: 7 };
+    let checked = 0;
+    for (let i = 0; i < 5000; i++) {
+      const result = decideAsteroidSpawn(rng, { levelIndex: 10, dt: 1 });
+      rng = result.rng;
+      const a = result.asteroid;
+      if (!a) continue;
+      checked++;
+      const angle = Math.atan2(a.velocity.y, a.velocity.x);
+      // Distance from the nearest horizontal direction (0 or PI).
+      const distFromHorizontal = Math.min(Math.abs(angle), Math.abs(Math.PI - Math.abs(angle)));
+      expect(distFromHorizontal).toBeLessThanOrEqual(ASTEROID_ANGLE_SPREAD + 1e-9);
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

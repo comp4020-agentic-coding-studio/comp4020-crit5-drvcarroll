@@ -36,7 +36,7 @@ describe("C2: a wrong move is possible, and play ends somewhere", () => {
 
   it("an asteroid hit that zeroes colonists before the requirement is met is a loss", () => {
     const base = createInitialState(SEED);
-    const asteroid = { id: 1, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20 };
+    const asteroid = { id: 1, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20, spin: 0 };
     const hit = applyAsteroidHit(
       { ...base, ship: { ...base.ship, colonists: 1 }, asteroids: [asteroid] },
       1,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PLANET_GAP_SCROLL } from "./constants.ts";
 import {
   asteroidSpawnRatePerSecond,
   colonistBatchForLevel,
@@ -39,6 +40,13 @@ describe("generateLevelPlan", () => {
     const { plan } = generateLevelPlan(2, { seed: 1 });
     const total = plan.planets.reduce((sum, p) => sum + p.colonistsRequired, 0);
     expect(colonistBatchForLevel(plan)).toBe(total);
+  });
+
+  it("schedules consecutive planets exactly PLANET_GAP_SCROLL apart", () => {
+    const { plan } = generateLevelPlan(3, { seed: 4 });
+    for (let i = 1; i < plan.planets.length; i++) {
+      expect(plan.planets[i].atScroll - plan.planets[i - 1].atScroll).toBe(PLANET_GAP_SCROLL);
+    }
   });
 });
 

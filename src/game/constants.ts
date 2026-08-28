@@ -20,6 +20,8 @@ export const ASTEROID_MIN_RADIUS = 14;
 export const ASTEROID_MAX_RADIUS = 42;
 export const ASTEROID_SPEED_MIN = 30;
 export const ASTEROID_SPEED_MAX = 90;
+export const ASTEROID_ANGLE_SPREAD = 0.45; // radians either side of horizontal (R5)
+export const ASTEROID_SPIN_MAX = 2; // decorative tumble rate, +/- rad/s
 export const BASE_ASTEROID_RATE = 0.15; // spawns / s at level 0
 export const DIFFICULTY_STEP = 0.35; // spawn-rate growth per level
 
@@ -32,16 +34,17 @@ export const SCROLL_SPEED_MAX = 220;
 export const PLANET_MIN_RADIUS = 30;
 export const PLANET_MAX_RADIUS = 70;
 export const REQ_PER_RADIUS = 0.9; // colonistsRequired = round(radius * this)
-export const PLANET_GAP_SCROLL = 900; // world units of scroll between planets
+export const PLANET_GAP_SCROLL = 520; // was 900 --- the "spawns halfway through" fix (R6)
+export const PLANET_DRIFT_MAX = 14; // +/- lateral drift, so planet columns don't line up
+export const PLANET_SPIN_MAX = 1; // decorative spin rate, +/- rad/s
 export const BASE_PLANETS_PER_LEVEL = 3;
 export const MAX_PLANETS_PER_LEVEL = 10;
-// The opening frame's pre-activated planet sits this close, not at its
-// plan-generated scrollY --- so it's already in view on the first frame,
-// with no instruction needed to say "look, a planet".
-export const OPENING_PLANET_SCROLLY = 260;
+// The opening frame's pre-activated planet sits at this fraction of
+// FRAME_HALF_HEIGHT --- already in view on the first frame, with no
+// instruction needed to say "look, a planet".
+export const OPENING_PLANET_FRAC = 0.55;
 
 // World
-export const LANE_HALF_WIDTH = 340; // horizontal play-field half-width
 export const DESPAWN_BEHIND = 1200; // remove asteroids this far behind the ship
 
 // Frame (the fixed play area a scrolling world drifts through --- see

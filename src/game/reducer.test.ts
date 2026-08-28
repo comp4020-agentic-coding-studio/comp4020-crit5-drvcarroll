@@ -50,7 +50,7 @@ describe("tick", () => {
 
   it("resolves a ship~asteroid overlap into a colonist loss", () => {
     const base = createInitialState(SEED);
-    const asteroid = { id: 99, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20 };
+    const asteroid = { id: 99, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20, spin: 0 };
     const state = { ...base, asteroids: [asteroid] };
     const next = tick(state, NO_INPUT, 1 / 60);
     expect(next.ship.colonists).toBeLessThan(base.ship.colonists);
@@ -119,7 +119,7 @@ describe("attemptLanding", () => {
 describe("applyAsteroidHit", () => {
   it("scales colonist loss to the asteroid's radius", () => {
     const base = createInitialState(SEED);
-    const asteroid = { id: 5, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 10 };
+    const asteroid = { id: 5, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 10, spin: 0 };
     const hit = applyAsteroidHit({ ...base, asteroids: [asteroid] }, 5);
     expect(hit.ship.colonists).toBe(base.ship.colonists - Math.ceil(10 * 0.6));
     expect(hit.asteroids).toHaveLength(0);
@@ -127,7 +127,7 @@ describe("applyAsteroidHit", () => {
 
   it("never drops colonists below zero", () => {
     const base = createInitialState(SEED);
-    const asteroid = { id: 5, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 1000 };
+    const asteroid = { id: 5, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 1000, spin: 0 };
     const hit = applyAsteroidHit({ ...base, ship: { ...base.ship, colonists: 1 }, asteroids: [asteroid] }, 5);
     expect(hit.ship.colonists).toBe(0);
   });

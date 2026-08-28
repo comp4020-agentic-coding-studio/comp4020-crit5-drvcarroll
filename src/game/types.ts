@@ -19,6 +19,8 @@ export interface Planet {
   radius: number;
   colonistsRequired: number;
   colonized: boolean;
+  driftX: number; // small lateral drift, so columns don't line up
+  spin: number; // render-only decoration, stored for determinism
 }
 
 export interface Asteroid {
@@ -26,6 +28,7 @@ export interface Asteroid {
   position: Vec2;
   velocity: Vec2;
   radius: number;
+  spin: number; // deterministic tumble rate, render-only
 }
 
 export interface Bullet {
@@ -36,10 +39,12 @@ export interface Bullet {
 }
 
 export interface PlanetSpec {
-  scrollY: number;
+  atScroll: number; // odometer distance at which this planet activates
   lane: number;
   radius: number;
   colonistsRequired: number;
+  driftX: number;
+  spin: number;
 }
 
 export interface LevelPlan {

@@ -22,6 +22,8 @@ function planet(overrides: Partial<Planet> = {}): Planet {
     radius: 50,
     colonistsRequired: 5,
     colonized: false,
+    driftX: 0,
+    spin: 0,
     ...overrides,
   };
 }

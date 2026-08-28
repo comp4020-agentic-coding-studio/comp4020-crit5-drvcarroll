@@ -2,11 +2,13 @@ import {
   BASE_PLANETS_PER_LEVEL,
   BASE_ASTEROID_RATE,
   DIFFICULTY_STEP,
-  LANE_HALF_WIDTH,
+  FRAME_HALF_WIDTH,
   MAX_PLANETS_PER_LEVEL,
+  PLANET_DRIFT_MAX,
   PLANET_GAP_SCROLL,
   PLANET_MAX_RADIUS,
   PLANET_MIN_RADIUS,
+  PLANET_SPIN_MAX,
   REQ_PER_RADIUS,
 } from "./constants.ts";
 import { nextRange, type RngState } from "./rng.ts";
@@ -28,14 +30,22 @@ export function generateLevelPlan(levelIndex: number, rng: RngState): { plan: Le
   let state = rng;
 
   for (let i = 0; i < count; i++) {
-    const [lane, afterLane] = nextRange(state, -LANE_HALF_WIDTH, LANE_HALF_WIDTH);
-    const [radius, afterRadius] = nextRange(afterLane, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS);
-    state = afterRadius;
+    // Radius first, so the lane range can be narrowed to keep the whole
+    // planet inside the frame horizontally once it activates (R5).
+    const [radius, afterRadius] = nextRange(state, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS);
+    const laneHalfWidth = FRAME_HALF_WIDTH - radius;
+    const [lane, afterLane] = nextRange(afterRadius, -laneHalfWidth, laneHalfWidth);
+    const [driftX, afterDrift] = nextRange(afterLane, -PLANET_DRIFT_MAX, PLANET_DRIFT_MAX);
+    // Spin is decorative only (render tumble); small so it reads as gentle.
+    const [spin, afterSpin] = nextRange(afterDrift, -PLANET_SPIN_MAX, PLANET_SPIN_MAX);
+    state = afterSpin;
     planets.push({
-      scrollY: (i + 1) * PLANET_GAP_SCROLL,
+      atScroll: (i + 1) * PLANET_GAP_SCROLL,
       lane,
       radius,
       colonistsRequired: Math.round(radius * REQ_PER_RADIUS),
+      driftX,
+      spin,
     });
   }
 

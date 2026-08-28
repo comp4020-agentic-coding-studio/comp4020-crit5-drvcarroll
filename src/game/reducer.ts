@@ -1,4 +1,4 @@
-import { AMMO_COST_PER_SHOT, ASTEROID_DAMAGE_SCALE, BULLET_LIFETIME, BULLET_SPEED, DESPAWN_BEHIND, FLOURISH_DURATION } from "./constants.ts";
+import { AMMO_COST_PER_SHOT, ASTEROID_DAMAGE_SCALE, BULLET_LIFETIME, BULLET_SPEED, DESPAWN_BEHIND, FLOURISH_DURATION, FRAME_HALF_HEIGHT } from "./constants.ts";
 import { circlesOverlap, isGentleLanding } from "./collisions.ts";
 import { colonistBatchForLevel, fuelAmmoTopUpFraction, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
@@ -25,10 +25,12 @@ function activatePlannedPlanets(state: GameState): GameState {
 
   const planet: Planet = {
     id: state.nextId,
-    position: { x: spec.lane, y: spec.scrollY },
+    position: { x: spec.lane, y: FRAME_HALF_HEIGHT + spec.radius },
     radius: spec.radius,
     colonistsRequired: spec.colonistsRequired,
     colonized: false,
+    driftX: spec.driftX,
+    spin: spec.spin,
   };
 
   return {
@@ -41,7 +43,6 @@ function activatePlannedPlanets(state: GameState): GameState {
 
 function spawnAsteroids(state: GameState, dt: number): GameState {
   const { asteroid, rng } = decideAsteroidSpawn(state.rng, {
-    scrollY: state.scrollY,
     levelIndex: state.level.index,
     dt,
   });

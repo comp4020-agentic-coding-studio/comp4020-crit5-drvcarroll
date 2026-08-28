@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OPENING_PLANET_SCROLLY } from "./constants.ts";
+import { FRAME_HALF_HEIGHT, OPENING_PLANET_FRAC } from "./constants.ts";
 import { colonistBatchForLevel } from "./level.ts";
 import { createInitialState } from "./state.ts";
 
@@ -8,7 +8,12 @@ describe("createInitialState", () => {
     const state = createInitialState({ seed: 1 });
     expect(state.planets).toHaveLength(1);
     expect(state.level.spawnedCount).toBe(1);
-    expect(state.planets[0].position.y).toBe(OPENING_PLANET_SCROLLY);
+    expect(state.planets[0].position.y).toBe(FRAME_HALF_HEIGHT * OPENING_PLANET_FRAC);
+  });
+
+  it("places the first planet inside the frame at step 0", () => {
+    const state = createInitialState({ seed: 1 });
+    expect(Math.abs(state.planets[0].position.y)).toBeLessThanOrEqual(FRAME_HALF_HEIGHT);
   });
 
   it("issues a colonist batch sized to exactly cover level 0's requirement", () => {
