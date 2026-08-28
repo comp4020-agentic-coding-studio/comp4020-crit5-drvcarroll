@@ -892,6 +892,12 @@ biased near-horizontal by `ASTEROID_ANGLE_SPREAD`). Modify `state.ts` so
 0; sampled asteroid angles stay inside the spread band over 5000 draws;
 consecutive planets are exactly `PLANET_GAP_SCROLL` apart in `atScroll`.
 *Serves:* R6, J1 --- the "planets spawn halfway through" fix.
+*Amendment:* §5.5 names no constant for `spin`'s range, so this step adds
+`PLANET_SPIN_MAX = 1` and `ASTEROID_SPIN_MAX = 2` (rad/s-ish, decorative
+tumble only) alongside the table's existing tunables. `decideAsteroidSpawn`
+also drops its now-unused `scrollY` option, since entry `y` is
+`FRAME_HALF_HEIGHT + radius` and no longer depends on it --- R6/R7 should
+not expect that option to still exist.
 
 **R6. Relative-speed landing, and solid planet contact.** Modify
 `collisions.ts`: `isGentleLanding(ship, planet, planetVelocity)` (relative
