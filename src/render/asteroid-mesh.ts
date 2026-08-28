@@ -1,7 +1,7 @@
 import { DodecahedronGeometry, Mesh, MeshStandardMaterial, Scene } from "three";
 import type { Asteroid } from "../game/types.ts";
 import { ASTEROID_COLOR } from "./render-constants.ts";
-import { toWorld } from "./camera-follow.ts";
+import { toWorld } from "./frame-to-world.ts";
 import { MeshPool } from "./pool.ts";
 
 const HOVER_HEIGHT = 6; // lifted slightly above the ground plane

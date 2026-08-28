@@ -1,7 +1,7 @@
 import { Mesh, MeshStandardMaterial, Scene, SphereGeometry } from "three";
 import type { Bullet } from "../game/types.ts";
 import { BULLET_COLOR } from "./render-constants.ts";
-import { toWorld } from "./camera-follow.ts";
+import { toWorld } from "./frame-to-world.ts";
 import { MeshPool } from "./pool.ts";
 
 const HOVER_HEIGHT = 6;

@@ -6,7 +6,7 @@ import {
   PLANET_LIGHTNESS,
   PLANET_SATURATION,
 } from "./render-constants.ts";
-import { toWorld } from "./camera-follow.ts";
+import { toWorld } from "./frame-to-world.ts";
 import { MeshPool } from "./pool.ts";
 
 // Unit-radius low-poly sphere, uniformly scaled per planet --- reads as

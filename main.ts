@@ -3,7 +3,6 @@
 import { createInitialState } from "./src/game/state.ts";
 import { createAsteroidPool, syncAsteroids } from "./src/render/asteroid-mesh.ts";
 import { createBulletPool, syncBullets } from "./src/render/bullet-mesh.ts";
-import { followShip } from "./src/render/camera-follow.ts";
 import { createHud } from "./src/render/hud.ts";
 import { createInputSource } from "./src/render/input.ts";
 import { startLoop } from "./src/render/loop.ts";
@@ -37,7 +36,6 @@ startLoop(initialState, getInput, (state) => {
   syncPlanets(planetPool, state.planets);
   syncAsteroids(asteroidPool, state.asteroids);
   syncBullets(bulletPool, state.bullets);
-  followShip(target.camera, state.ship);
   target.renderer.render(target.scene, target.camera);
   renderHud(state);
 });

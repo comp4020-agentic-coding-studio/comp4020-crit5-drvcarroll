@@ -41,11 +41,7 @@ describe("boundaries: src/game stays headless", () => {
   }
 });
 
-// TODO(R4): un-skip once camera-follow.ts is deleted. Today it still calls
-// `camera.position.set(...)` from outside scene.ts's constructor, which is
-// exactly the coupling this guard exists to forbid (Decision R1) --- so the
-// test is written now and enabled once R4 removes that file.
-describe.skip("boundaries: only scene.ts's constructor sets camera.position", () => {
+describe("boundaries: only scene.ts's constructor sets camera.position", () => {
   const files = tsFilesUnder(RENDER_DIR).filter((f) => f !== join(RENDER_DIR, "scene.ts"));
   const pattern = /camera\.position\s*(=|\.set\()/;
 

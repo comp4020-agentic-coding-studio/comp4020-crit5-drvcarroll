@@ -11,7 +11,7 @@ import {
 } from "three";
 import type { Ship } from "../game/types.ts";
 import { ENGINE_GLOW_COLOR, SHIP_COLOR } from "./render-constants.ts";
-import { toWorld } from "./camera-follow.ts";
+import { toWorld } from "./frame-to-world.ts";
 
 // Nose cone + body + two fins, grouped. Local +X is the nose direction
 // (matches vector.fromAngle(0) = +x), local Y is height off the ground
