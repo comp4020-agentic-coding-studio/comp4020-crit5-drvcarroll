@@ -29,6 +29,7 @@ export function createInitialState(seed: RngState): GameState {
       colonists: colonistBatchForLevel(plan),
       fuel: 1,
       ammo: 1,
+      thrusting: false,
     },
     planets: [firstPlanet],
     asteroids: [],

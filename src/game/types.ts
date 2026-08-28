@@ -6,10 +6,11 @@ export type { Vec2, RngState };
 export interface Ship {
   position: Vec2;
   heading: number; // radians, 0 = +x, ccw
-  velocity: Vec2; // true inertia: no drag term is ever applied to this
+  velocity: Vec2; // inertial, with light exponential damping (Decision R4)
   colonists: number;
   fuel: number; // 0..1
   ammo: number; // 0..1
+  thrusting: boolean; // true while forward thrust fired this tick
 }
 
 export interface Planet {
@@ -69,6 +70,7 @@ export interface Input {
   rotateLeft: boolean;
   rotateRight: boolean;
   thrust: boolean;
+  retro: boolean; // brakes along heading + PI (Decision R4)
   fire: boolean;
 }
 

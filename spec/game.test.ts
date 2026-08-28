@@ -19,7 +19,13 @@ import {
 } from "../src/game/level.ts";
 
 const SEED = { seed: 1 };
-const NO_INPUT = { rotateLeft: false, rotateRight: false, thrust: false, fire: false };
+const NO_INPUT = {
+  rotateLeft: false,
+  rotateRight: false,
+  thrust: false,
+  retro: false,
+  fire: false,
+};
 
 describe("C2: a wrong move is possible, and play ends somewhere", () => {
   it("fuel hitting zero before the level's planet count is reached is a loss", () => {

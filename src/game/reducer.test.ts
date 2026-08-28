@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SHIP_DAMPING } from "./constants.ts";
 import { createInitialState } from "./state.ts";
 import {
   advanceLevel,
@@ -11,15 +12,22 @@ import {
 import { colonistBatchForLevel } from "./level.ts";
 
 const SEED = { seed: 1 };
-const NO_INPUT = { rotateLeft: false, rotateRight: false, thrust: false, fire: false };
+const NO_INPUT = {
+  rotateLeft: false,
+  rotateRight: false,
+  thrust: false,
+  retro: false,
+  fire: false,
+};
 
 describe("tick", () => {
-  it("moves the ship by its velocity over dt", () => {
+  it("moves the ship by its (damped) velocity over dt", () => {
     const base = createInitialState(SEED);
     // No planets in range: isolates movement from gravity (see gravity.test.ts).
     const state = { ...base, ship: { ...base.ship, velocity: { x: 10, y: 0 } }, planets: [] };
     const next = tick(state, NO_INPUT, 1);
-    expect(next.ship.position.x).toBeCloseTo(10);
+    const dampedVx = 10 * Math.exp(-SHIP_DAMPING * 1);
+    expect(next.ship.position.x).toBeCloseTo(dampedVx, 5);
   });
 
   it("running out of fuel away from any planet is a loss", () => {

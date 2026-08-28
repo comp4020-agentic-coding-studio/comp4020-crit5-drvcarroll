@@ -14,6 +14,7 @@ function ship(overrides: Partial<Ship> = {}): Ship {
     colonists: 10,
     fuel: 1,
     ammo: 1,
+    thrusting: false,
     ...overrides,
   };
 }

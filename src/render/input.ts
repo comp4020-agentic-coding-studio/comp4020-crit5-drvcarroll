@@ -14,7 +14,13 @@ const KEY_MAP: Record<string, keyof Input> = {
 // pads both drive the same Input record --- src/game/* never knows which
 // one was used (Decision 6).
 export function createInputSource(root: ParentNode): () => Input {
-  const state: Input = { rotateLeft: false, rotateRight: false, thrust: false, fire: false };
+  const state: Input = {
+    rotateLeft: false,
+    rotateRight: false,
+    thrust: false,
+    retro: false,
+    fire: false,
+  };
 
   window.addEventListener("keydown", (event) => {
     const action = KEY_MAP[event.key];

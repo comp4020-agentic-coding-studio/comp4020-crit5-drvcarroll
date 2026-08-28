@@ -3,8 +3,10 @@
 
 // Ship physics
 export const THRUST_ACCEL = 220; // world units / s^2 while thrusting
+export const RETRO_ACCEL = 170; // world units / s^2 while retro-thrusting
 export const ROTATE_SPEED = 3.2; // radians / s while rotating
 export const FUEL_PER_THRUST_TICK = 0.06; // fraction of full tank / s while thrusting
+export const SHIP_DAMPING = 0.6; // per-second exponent: v *= exp(-this * dt)
 export const LANDING_SPEED_THRESHOLD = 40; // max speed to register a landing
 
 // Weapons
