@@ -931,6 +931,23 @@ once; a fast planet approach stops the ship at the surface **and** loses
 colonists, in the same tick; a gentle approach still deposits, never
 crashes; an entity below the bottom edge is gone next tick. *Serves:* C2,
 R9, R14, J2.
+*Amendment:* `applyPlanetCrash`'s signature dropped `planetId`
+(`(state, planetVelocity, preContactVelocity)`) --- unlike `attemptLanding`,
+a crash never touches the `planets` array (no colonize, no removal), so the
+id bought nothing. Also: `resolvePlanetContact` places the ship at exactly
+`distance === radius` from the planet centre, and the normalize/rescale
+round-trip can put that a hair outside on the very tick it happens ---
+`circlesOverlap` (`collisions.ts`) gained a `1e-6` `OVERLAP_EPSILON` so a
+gentle landing resolved the same tick as contact isn't missed by float
+noise. Neither changes any test-visible behaviour beyond the boundary case
+it fixes. Real repeat-fast-crashes on one planet turn out to be
+self-limiting (contact zeroes the radial component every tick, so a second
+fast hit on the *same* planet is rare by construction) --- the 10-tick
+invuln test exercises `applyPlanetCrash`'s shared gate directly rather than
+via `tick()`, the same way the existing suite already unit-tests
+`attemptLanding`/`applyAsteroidHit` directly; the asteroid invuln test uses
+two distinct overlapping asteroids, matching Decision R9's actual
+motivation (a cluster, not one asteroid re-hitting itself).
 
 **R8. The simulation tier.** Build `spec/harness.ts`, the five pilots and
 all eight per-step invariants of §7.2, plus `spec/determinism.test.ts` with

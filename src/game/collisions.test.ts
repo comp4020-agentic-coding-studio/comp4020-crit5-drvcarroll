@@ -14,6 +14,7 @@ function ship(overrides: Partial<Ship> = {}): Ship {
     fuel: 1,
     ammo: 1,
     thrusting: false,
+    invulnUntil: -Infinity,
     ...overrides,
   };
 }

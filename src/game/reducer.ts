@@ -1,27 +1,48 @@
-import { AMMO_COST_PER_SHOT, ASTEROID_DAMAGE_SCALE, BULLET_LIFETIME, BULLET_SPEED, DESPAWN_BEHIND, FLOURISH_DURATION, FRAME_HALF_HEIGHT } from "./constants.ts";
-import { circlesOverlap, isGentleLanding } from "./collisions.ts";
+import {
+  AMMO_COST_PER_SHOT,
+  ASTEROID_DAMAGE_SCALE,
+  BULLET_LIFETIME,
+  BULLET_SPEED,
+  FLOURISH_DURATION,
+  FRAME_HALF_HEIGHT,
+  INVULN_DISTANCE,
+  LANDING_SPEED_THRESHOLD,
+  PLANET_CRASH_DAMAGE_SCALE,
+} from "./constants.ts";
+import { circlesOverlap, isGentleLanding, resolvePlanetContact } from "./collisions.ts";
+import { isOutsideFrame } from "./frame.ts";
 import { colonistBatchForLevel, fuelAmmoTopUpFraction, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
-import { scrollSpeedForLevel } from "./scroll.ts";
+import { advanceScroll, driftEntities, scrollSpeedForLevel } from "./scroll.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
-import { add, fromAngle, scale } from "./vector.ts";
+import { add, fromAngle, length, scale, subtract, type Vec2 } from "./vector.ts";
 import { applyGravity } from "./gravity.ts";
 import { applyInput } from "./ship.ts";
-import type { EndState, GameState, Input, Planet } from "./types.ts";
+import type { EndState, GameState, Input, Planet, Ship } from "./types.ts";
 
-function advanceProjectiles(state: GameState, dt: number): GameState {
-  const bullets = state.bullets
-    .map((b) => ({ ...b, position: add(b.position, scale(b.velocity, dt)), ttl: b.ttl - dt }))
-    .filter((b) => b.ttl > 0);
+// The world drifts, the ship does not (R2): every non-ship entity's y falls
+// by scroll.speed*dt, on top of whichever own velocity it already has.
+function driftWorld(state: GameState, dt: number): GameState {
+  const scroll = advanceScroll(state.scroll, dt);
+  const planets = driftEntities(state.planets, dt, scroll.speed);
 
-  const asteroids = state.asteroids
-    .map((a) => ({ ...a, position: add(a.position, scale(a.velocity, dt)) }))
-    .filter((a) => state.ship.position.y - a.position.y < DESPAWN_BEHIND);
+  const asteroidsMoved = state.asteroids.map((a) => ({
+    ...a,
+    position: add(a.position, scale(a.velocity, dt)),
+  }));
+  const asteroids = driftEntities(asteroidsMoved, dt, scroll.speed);
 
-  return { ...state, bullets, asteroids };
+  // Bullets are never scroll-drifted --- only their own velocity moves them.
+  const bullets = state.bullets.map((b) => ({
+    ...b,
+    position: add(b.position, scale(b.velocity, dt)),
+    ttl: b.ttl - dt,
+  }));
+
+  return { ...state, scroll, planets, asteroids, bullets };
 }
 
 function activatePlannedPlanets(state: GameState): GameState {
-  const spec = decidePlanetActivation(state.level, state.scrollY);
+  const spec = decidePlanetActivation(state.level, state.scroll.distance);
   if (!spec) return state;
 
   const planet: Planet = {
@@ -76,14 +97,29 @@ function resolveBulletAsteroidHits(state: GameState): GameState {
   };
 }
 
+// Shared i-frame gate (R9): a hit while still inside the last hit's
+// INVULN_DISTANCE is suppressed entirely --- no damage, no removal either,
+// so a charging asteroid isn't given a free kill during i-frames.
+function isInvulnerable(state: GameState): boolean {
+  return state.scroll.distance < state.ship.invulnUntil;
+}
+
+function grantInvuln(ship: Ship, scrollDistance: number): Ship {
+  return { ...ship, invulnUntil: scrollDistance + INVULN_DISTANCE };
+}
+
 /** Ship+asteroid contact: colonists lost proportional to size, asteroid destroyed. */
 export function applyAsteroidHit(state: GameState, asteroidId: number): GameState {
   const asteroid = state.asteroids.find((a) => a.id === asteroidId);
-  if (!asteroid) return state;
+  if (!asteroid || isInvulnerable(state)) return state;
+
   const damage = Math.ceil(asteroid.radius * ASTEROID_DAMAGE_SCALE);
   return {
     ...state,
-    ship: { ...state.ship, colonists: Math.max(0, state.ship.colonists - damage) },
+    ship: grantInvuln(
+      { ...state.ship, colonists: Math.max(0, state.ship.colonists - damage) },
+      state.scroll.distance,
+    ),
     asteroids: state.asteroids.filter((a) => a.id !== asteroidId),
   };
 }
@@ -95,14 +131,14 @@ function resolveShipAsteroidHits(state: GameState): GameState {
 
 /**
  * Deposits colonists on a gentle, in-range landing and tops up fuel/ammo.
- * A fast pass is a pure no-op --- no deposit, no penalty (Decision 3):
- * a second unstated wrong-move mechanism would dilute C2's one loss path.
+ * A fast pass is a pure no-op --- no deposit, no penalty here (the crash
+ * cost is a separate path, applyPlanetCrash, R14).
  */
 export function attemptLanding(state: GameState, planetId: number): GameState {
   const planet = state.planets.find((p) => p.id === planetId);
   if (!planet || planet.colonized) return state;
 
-  const planetVelocity = { x: planet.driftX, y: -scrollSpeedForLevel(state.level.index) };
+  const planetVelocity = { x: planet.driftX, y: -state.scroll.speed };
   if (!isGentleLanding(state.ship, planet, planetVelocity)) return state;
 
   const deposit = Math.min(planet.colonistsRequired, state.ship.colonists);
@@ -121,12 +157,64 @@ export function attemptLanding(state: GameState, planetId: number): GameState {
   };
 }
 
-function resolveShipPlanetLandings(state: GameState): GameState {
-  const scrollSpeed = scrollSpeedForLevel(state.level.index);
+/**
+ * A fast planet touch (R14): the surface has already stopped the ship
+ * (resolvePlanetContact ran first), so this only charges the colonist cost,
+ * scaled by how far over LANDING_SPEED_THRESHOLD the pre-contact relative
+ * speed was --- gated by the same i-frames an asteroid hit grants (R9).
+ */
+export function applyPlanetCrash(
+  state: GameState,
+  planetVelocity: Vec2,
+  preContactVelocity: Vec2,
+): GameState {
+  if (isInvulnerable(state)) return state;
+
+  const relativeSpeed = length(subtract(preContactVelocity, planetVelocity));
+  const damage = Math.ceil((relativeSpeed - LANDING_SPEED_THRESHOLD) * PLANET_CRASH_DAMAGE_SCALE);
+
+  return {
+    ...state,
+    ship: grantInvuln(
+      { ...state.ship, colonists: Math.max(0, state.ship.colonists - damage) },
+      state.scroll.distance,
+    ),
+  };
+}
+
+/**
+ * Planets are solid (R14): the first uncolonized planet the ship overlaps
+ * always gets stopped at the surface, then forks on the *pre-contact*
+ * relative speed --- gentle deposits, fast crashes. The fork must read
+ * velocity before resolvePlanetContact runs, since contact zeroes the
+ * radial component and changes the magnitude the fork depends on.
+ */
+function resolveShipPlanetContact(state: GameState): GameState {
   const target = state.planets.find(
-    (p) => !p.colonized && isGentleLanding(state.ship, p, { x: p.driftX, y: -scrollSpeed }),
+    (p) => !p.colonized && circlesOverlap(state.ship.position, 0, p.position, p.radius),
   );
-  return target ? attemptLanding(state, target.id) : state;
+  if (!target) return state;
+
+  const planetVelocity = { x: target.driftX, y: -state.scroll.speed };
+  const preContactVelocity = state.ship.velocity;
+  const gentle = isGentleLanding(state.ship, target, planetVelocity);
+
+  const contacted = { ...state, ship: resolvePlanetContact(state.ship, target, planetVelocity) };
+
+  return gentle
+    ? attemptLanding(contacted, target.id)
+    : applyPlanetCrash(contacted, planetVelocity, preContactVelocity);
+}
+
+// Anything that has fully left the frame is gone; bullets despawn by ttl
+// only, decremented during the drift phase.
+function despawn(state: GameState): GameState {
+  return {
+    ...state,
+    bullets: state.bullets.filter((b) => b.ttl > 0),
+    planets: state.planets.filter((p) => !isOutsideFrame(p.position, p.radius)),
+    asteroids: state.asteroids.filter((a) => !isOutsideFrame(a.position, a.radius)),
+  };
 }
 
 export function fireBullet(state: GameState): GameState {
@@ -149,9 +237,10 @@ export function fireBullet(state: GameState): GameState {
 
 /**
  * A fresh, harder level: new plan, colonist batch sized exactly to it,
- * fuel/ammo carried over untouched (Decision 4). Called from tick() before
- * the loss check ever runs (Decision 2) --- that ordering, not a special
- * case, is what makes the deposit that completes a level a win.
+ * fuel/ammo carried over untouched (Decision 4), scroll reset to the new
+ * level's speed. Called from tick() before the loss check ever runs
+ * (Decision 2) --- that ordering, not a special case, is what makes the
+ * deposit that completes a level a win.
  */
 export function advanceLevel(state: GameState): GameState {
   const index = state.level.index + 1;
@@ -162,6 +251,7 @@ export function advanceLevel(state: GameState): GameState {
     planets: [],
     level: { index, plan, spawnedCount: 0, colonizedCount: 0, planetsRequired: planetsRequiredForLevel(index) },
     ship: { ...state.ship, colonists: colonistBatchForLevel(plan) },
+    scroll: { speed: scrollSpeedForLevel(index), distance: 0 },
     end: { status: "playing" },
     flourish: { levelIndex: index, ttl: FLOURISH_DURATION },
   };
@@ -179,19 +269,25 @@ export function checkEndCondition(state: GameState): EndState {
   return { status: "playing" };
 }
 
+// Tick order follows BUILD_PLAN.md 2.3 exactly: drift -> input/gravity/clamp
+// -> spawn -> collide -> despawn -> level -> end.
 export function tick(state: GameState, input: Input, dt: number): GameState {
   if (state.end.status === "lost") return state;
 
-  const pulled = applyGravity(state.ship, state.planets, dt);
-  let next = { ...state, ship: applyInput(pulled, input, dt) };
-  next = { ...next, scrollY: Math.max(next.scrollY, next.ship.position.y) };
-  next = advanceProjectiles(next, dt);
+  let next = driftWorld(state, dt);
+
+  const pulled = applyGravity(next.ship, next.planets, dt);
+  next = { ...next, ship: applyInput(pulled, input, dt) };
+
   next = activatePlannedPlanets(next);
   next = spawnAsteroids(next, dt);
   if (input.fire) next = fireBullet(next);
+
   next = resolveBulletAsteroidHits(next);
   next = resolveShipAsteroidHits(next);
-  next = resolveShipPlanetLandings(next);
+  next = resolveShipPlanetContact(next);
+
+  next = despawn(next);
 
   if (next.level.colonizedCount >= next.level.planetsRequired) {
     return advanceLevel(next);

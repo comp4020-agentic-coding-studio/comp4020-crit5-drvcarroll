@@ -43,9 +43,9 @@ export const MAX_PLANETS_PER_LEVEL = 10;
 // FRAME_HALF_HEIGHT --- already in view on the first frame, with no
 // instruction needed to say "look, a planet".
 export const OPENING_PLANET_FRAC = 0.55;
-
-// World
-export const DESPAWN_BEHIND = 1200; // remove asteroids this far behind the ship
+// Colonists lost = ceil(excess relative speed * this) on a fast planet
+// touch (R14) --- mirrors ASTEROID_DAMAGE_SCALE's formula shape.
+export const PLANET_CRASH_DAMAGE_SCALE = 0.08;
 
 // Frame (the fixed play area a scrolling world drifts through --- see
 // BUILD_PLAN.md Decision R1/R2)
@@ -58,6 +58,10 @@ export const GRAVITY_RADIUS_MULT = 6; // well radius = planet.radius * this
 export const GRAVITY_STRENGTH = 4000; // accel = this * radius / distSq, capped
 export const GRAVITY_MAX_ACCEL = 90; // world units / s^2, holds near the surface
 export const GRAVITY_SOFTENING = 400; // added to distSq so pull can't spike
+
+// Invulnerability (R9): odometer units of i-frames after a hit, so repeated
+// overlap across ticks can't charge colonist damage more than once.
+export const INVULN_DISTANCE = 60;
 
 // UI
 export const FLOURISH_DURATION = 1.2; // seconds the level-up flash is shown

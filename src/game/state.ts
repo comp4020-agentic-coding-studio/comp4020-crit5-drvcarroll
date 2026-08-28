@@ -1,5 +1,6 @@
 import { FRAME_HALF_HEIGHT, OPENING_PLANET_FRAC } from "./constants.ts";
 import { colonistBatchForLevel, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
+import { scrollSpeedForLevel } from "./scroll.ts";
 import type { GameState, Planet } from "./types.ts";
 import type { RngState } from "./rng.ts";
 
@@ -32,6 +33,7 @@ export function createInitialState(seed: RngState): GameState {
       fuel: 1,
       ammo: 1,
       thrusting: false,
+      invulnUntil: -Infinity,
     },
     planets: [firstPlanet],
     asteroids: [],
@@ -43,7 +45,7 @@ export function createInitialState(seed: RngState): GameState {
       colonizedCount: 0,
       planetsRequired,
     },
-    scrollY: 0,
+    scroll: { speed: scrollSpeedForLevel(0), distance: 0 },
     rng,
     end: { status: "playing" },
     nextId: 2,

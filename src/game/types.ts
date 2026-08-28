@@ -11,6 +11,7 @@ export interface Ship {
   fuel: number; // 0..1
   ammo: number; // 0..1
   thrusting: boolean; // true while forward thrust fired this tick
+  invulnUntil: number; // scroll-odometer value; re-damage suppressed below it (R9)
 }
 
 export interface Planet {
@@ -90,7 +91,7 @@ export interface GameState {
   asteroids: Asteroid[];
   bullets: Bullet[];
   level: LevelState;
-  scrollY: number;
+  scroll: Scroll;
   rng: RngState;
   end: EndState;
   nextId: number;

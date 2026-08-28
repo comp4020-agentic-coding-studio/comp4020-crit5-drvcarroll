@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { SHIP_DAMPING } from "./constants.ts";
+import {
+  FRAME_HALF_HEIGHT,
+  LANDING_SPEED_THRESHOLD,
+  PLANET_CRASH_DAMAGE_SCALE,
+  SHIP_DAMPING,
+} from "./constants.ts";
 import { createInitialState } from "./state.ts";
 import {
   advanceLevel,
   applyAsteroidHit,
+  applyPlanetCrash,
   attemptLanding,
   checkEndCondition,
   fireBullet,
@@ -84,6 +90,61 @@ describe("tick", () => {
     const next = tick(state, NO_INPUT, 1);
     expect(next.planets[0].colonized).toBe(false);
     expect(next.ship.colonists).toBe(ship.colonists);
+  });
+
+  it("a fast planet approach stops the ship at the surface and loses colonists, same tick", () => {
+    const base = createInitialState(SEED);
+    const planet = { ...base.planets[0], position: { x: 0, y: 0 }, radius: 100, driftX: 0 };
+    const ship = { ...base.ship, position: { x: 0, y: 150 }, velocity: { x: 0, y: -500 } };
+    const state = { ...base, ship, planets: [planet] };
+    const next = tick(state, NO_INPUT, 1);
+
+    const landedPlanet = next.planets.find((p) => p.id === planet.id);
+    expect(landedPlanet?.colonized).toBe(false);
+    // Stopped exactly at the surface, not passed through it.
+    expect(Math.abs(next.ship.position.y - landedPlanet!.position.y)).toBeCloseTo(planet.radius, 5);
+    expect(next.ship.colonists).toBeLessThan(ship.colonists);
+  });
+
+  it("an entity that has drifted outside the frame is gone next tick", () => {
+    const base = createInitialState(SEED);
+    const belowFrame = -FRAME_HALF_HEIGHT - 100;
+    const goneAsteroid = { id: 50, position: { x: 0, y: belowFrame }, velocity: { x: 0, y: 0 }, radius: 10, spin: 0 };
+    const gonePlanet = {
+      id: 51, position: { x: 0, y: belowFrame }, radius: 20,
+      colonistsRequired: 5, colonized: false, driftX: 0, spin: 0,
+    };
+    const state = { ...base, asteroids: [goneAsteroid], planets: [gonePlanet] };
+    const next = tick(state, NO_INPUT, 1 / 60);
+    expect(next.asteroids.find((a) => a.id === 50)).toBeUndefined();
+    expect(next.planets.find((p) => p.id === 51)).toBeUndefined();
+  });
+});
+
+describe("invulnerability (R9)", () => {
+  it("a second overlapping asteroid within INVULN_DISTANCE is suppressed, not a free kill", () => {
+    const base = createInitialState(SEED);
+    const first = { id: 10, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20, spin: 0 };
+    const afterFirst = applyAsteroidHit({ ...base, asteroids: [first] }, 10);
+    expect(afterFirst.asteroids).toHaveLength(0);
+    expect(afterFirst.ship.colonists).toBeLessThan(base.ship.colonists);
+
+    const second = { id: 11, position: afterFirst.ship.position, velocity: { x: 0, y: 0 }, radius: 20, spin: 0 };
+    const afterSecond = applyAsteroidHit({ ...afterFirst, asteroids: [second] }, 11);
+    expect(afterSecond.ship.colonists).toBe(afterFirst.ship.colonists);
+    expect(afterSecond.asteroids).toHaveLength(1);
+  });
+
+  it("repeated fast planet contact within INVULN_DISTANCE charges damage exactly once", () => {
+    const base = createInitialState(SEED);
+    const planetVelocity = { x: 0, y: 0 };
+    const fastVelocity = { x: 0, y: -200 };
+    let state = base;
+    for (let i = 0; i < 10; i++) {
+      state = applyPlanetCrash(state, planetVelocity, fastVelocity);
+    }
+    const damage = Math.ceil((200 - LANDING_SPEED_THRESHOLD) * PLANET_CRASH_DAMAGE_SCALE);
+    expect(state.ship.colonists).toBe(base.ship.colonists - damage);
   });
 });
 

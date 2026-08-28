@@ -15,6 +15,7 @@ function ship(overrides: Partial<Ship> = {}): Ship {
     fuel: 1,
     ammo: 1,
     thrusting: false,
+    invulnUntil: -Infinity,
     ...overrides,
   };
 }
@@ -70,7 +71,7 @@ describe("clampToFrame", () => {
 
   it("does not mutate the input ship", () => {
     const s = ship({ position: { x: CLAMP_X + 5, y: 0 }, velocity: { x: 1, y: 0 } });
-    const before = JSON.parse(JSON.stringify(s));
+    const before = structuredClone(s);
     clampToFrame(s);
     expect(s).toEqual(before);
   });

@@ -2,10 +2,14 @@ import { LANDING_SPEED_THRESHOLD } from "./constants.ts";
 import type { Planet, Ship } from "./types.ts";
 import { add, distance, length, scale, subtract, type Vec2 } from "./vector.ts";
 
+// Tolerance for a surface contact resolvePlanetContact just placed exactly
+// at aR+bR --- normalizing then rescaling can round a hair past the radius.
+const OVERLAP_EPSILON = 1e-6;
+
 // The ship is treated as a point for landing/hit purposes: what matters is
 // whether its position has reached inside the other body's radius.
 export function circlesOverlap(aPos: { x: number; y: number }, aR: number, bPos: { x: number; y: number }, bR: number): boolean {
-  return distance(aPos, bPos) <= aR + bR;
+  return distance(aPos, bPos) <= aR + bR + OVERLAP_EPSILON;
 }
 
 // "Gently" touching down: inside the planet's radius, below the speed a
