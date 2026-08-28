@@ -1,6 +1,7 @@
 import { AMMO_COST_PER_SHOT, ASTEROID_DAMAGE_SCALE, BULLET_LIFETIME, BULLET_SPEED, DESPAWN_BEHIND, FLOURISH_DURATION, FRAME_HALF_HEIGHT } from "./constants.ts";
 import { circlesOverlap, isGentleLanding } from "./collisions.ts";
 import { colonistBatchForLevel, fuelAmmoTopUpFraction, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
+import { scrollSpeedForLevel } from "./scroll.ts";
 import { decideAsteroidSpawn, decidePlanetActivation } from "./spawn.ts";
 import { add, fromAngle, scale } from "./vector.ts";
 import { applyGravity } from "./gravity.ts";
@@ -99,7 +100,10 @@ function resolveShipAsteroidHits(state: GameState): GameState {
  */
 export function attemptLanding(state: GameState, planetId: number): GameState {
   const planet = state.planets.find((p) => p.id === planetId);
-  if (!planet || planet.colonized || !isGentleLanding(state.ship, planet)) return state;
+  if (!planet || planet.colonized) return state;
+
+  const planetVelocity = { x: planet.driftX, y: -scrollSpeedForLevel(state.level.index) };
+  if (!isGentleLanding(state.ship, planet, planetVelocity)) return state;
 
   const deposit = Math.min(planet.colonistsRequired, state.ship.colonists);
   const topUp = fuelAmmoTopUpFraction(state.level.planetsRequired);
@@ -118,7 +122,10 @@ export function attemptLanding(state: GameState, planetId: number): GameState {
 }
 
 function resolveShipPlanetLandings(state: GameState): GameState {
-  const target = state.planets.find((p) => !p.colonized && isGentleLanding(state.ship, p));
+  const scrollSpeed = scrollSpeedForLevel(state.level.index);
+  const target = state.planets.find(
+    (p) => !p.colonized && isGentleLanding(state.ship, p, { x: p.driftX, y: -scrollSpeed }),
+  );
   return target ? attemptLanding(state, target.id) : state;
 }
 

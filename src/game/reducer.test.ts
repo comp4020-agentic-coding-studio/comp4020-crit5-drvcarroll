@@ -10,6 +10,13 @@ import {
   tick,
 } from "./reducer.ts";
 import { colonistBatchForLevel } from "./level.ts";
+import { scrollSpeedForLevel } from "./scroll.ts";
+
+// A gentle landing is now measured relative to the planet's own downward
+// drift (R5), so a still ship must match that drift, not sit at zero.
+function planetVelocity(planet: { driftX: number }, levelIndex: number) {
+  return { x: planet.driftX, y: -scrollSpeedForLevel(levelIndex) };
+}
 
 const SEED = { seed: 1 };
 const NO_INPUT = {
@@ -42,7 +49,7 @@ describe("tick", () => {
     const planet = base.planets[0];
     const state = {
       ...base,
-      ship: { ...base.ship, position: planet.position, velocity: { x: 0, y: 0 } },
+      ship: { ...base.ship, position: planet.position, velocity: planetVelocity(planet, base.level.index) },
     };
     const next = tick(state, NO_INPUT, 1 / 60);
     expect(next.planets.find((p) => p.id === planet.id)?.colonized).toBe(true);
@@ -107,7 +114,13 @@ describe("attemptLanding", () => {
     const planet = base.planets[0];
     const depleted = {
       ...base,
-      ship: { ...base.ship, position: planet.position, velocity: { x: 0, y: 0 }, fuel: 0.1, ammo: 0.1 },
+      ship: {
+        ...base.ship,
+        position: planet.position,
+        velocity: planetVelocity(planet, base.level.index),
+        fuel: 0.1,
+        ammo: 0.1,
+      },
     };
     const landed = attemptLanding(depleted, planet.id);
     const topUp = 1 / base.level.planetsRequired;

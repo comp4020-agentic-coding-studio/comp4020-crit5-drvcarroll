@@ -17,6 +17,7 @@ import {
   generateLevelPlan,
   planetsRequiredForLevel,
 } from "../src/game/level.ts";
+import { scrollSpeedForLevel } from "../src/game/scroll.ts";
 
 const SEED = { seed: 1 };
 const NO_INPUT = {
@@ -66,7 +67,8 @@ describe("C2 / J2: level-complete takes precedence over a same-instant colonist-
         ...oneAway.ship,
         colonists: planet.colonistsRequired,
         position: planet.position,
-        velocity: { x: 0, y: 0 },
+        // Gentle is relative to the planet's own drift (R5), not zero.
+        velocity: { x: planet.driftX, y: -scrollSpeedForLevel(oneAway.level.index) },
       },
     };
 
