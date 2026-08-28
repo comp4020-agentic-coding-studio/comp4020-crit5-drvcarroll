@@ -1,6 +1,7 @@
 // Composition root: wires the pure src/game/* state into input, the
 // Three.js render skeleton, and the HUD.
 import { createInitialState } from "./src/game/state.ts";
+import type { GameState, Input } from "./src/game/types.ts";
 import { createAsteroidPool, syncAsteroids } from "./src/render/asteroid-mesh.ts";
 import { createBulletPool, syncBullets } from "./src/render/bullet-mesh.ts";
 import { createHud } from "./src/render/hud.ts";
@@ -30,7 +31,7 @@ const renderHud = createHud(game);
 const initialState = createInitialState({ seed: Date.now() });
 const startTime = performance.now();
 
-startLoop(initialState, getInput, (state) => {
+const controller = startLoop(initialState, getInput, (state) => {
   syncShipMesh(shipMesh, state.ship);
   syncEngineGlow(engineGlow, shipMesh, getInput().thrust, (performance.now() - startTime) / 1000);
   syncPlanets(planetPool, state.planets);
@@ -39,3 +40,32 @@ startLoop(initialState, getInput, (state) => {
   target.renderer.render(target.scene, target.camera);
   renderHud(state);
 });
+
+// Precondition for Tier 3 (BUILD_PLAN §7.3): a Playwright harness drives
+// the game deterministically through this, instead of racing rAF.
+declare global {
+  interface Window {
+    __game?: {
+      state: GameState;
+      paused: boolean;
+      setInput: (input: Input | null) => void;
+      stepN: (n: number) => void;
+    };
+  }
+}
+
+if (import.meta.env.DEV || new URLSearchParams(location.search).get("test") === "1") {
+  window.__game = {
+    get state() {
+      return controller.getState();
+    },
+    get paused() {
+      return controller.isPaused();
+    },
+    set paused(value) {
+      controller.setPaused(value);
+    },
+    setInput: controller.setInputOverride,
+    stepN: controller.stepN,
+  };
+}

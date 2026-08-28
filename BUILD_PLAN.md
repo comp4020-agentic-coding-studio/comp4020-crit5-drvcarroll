@@ -992,6 +992,23 @@ unrelated change is a tuning regression to look at, not silence to fix.
 expected tick count for a given elapsed time and never spirals after a 3s
 stall. *Serves:* R10, and it is a precondition for Tier 3.
 
+*Re-align (post-R9):* the tick-count math (`accumulator + elapsed`, capped
+at `MAX_ACCUMULATOR`, divided into `FIXED_DT` steps) is pulled out as a
+pure `ticksForElapsed`, exported from `loop.ts` and unit-tested directly in
+`src/render/loop.test.ts` --- the only way to assert an exact tick count
+without faking rAF's timing end-to-end. `FIXED_DT`/`MAX_ACCUMULATOR` stay
+local to `loop.ts` rather than moving to `render-constants.ts`, since that
+file's own header scopes it to "visual-only tunables" and these are a
+timing concern, not a visual one. `startLoop` now returns a
+`LoopController` (`getState`, `isPaused`/`setPaused`,
+`setInputOverride`, `stepN`) instead of `void`, so `main.ts` --- the
+composition root, not `loop.ts` --- can build `window.__game = { state,
+paused, setInput, stepN }` from it; `loop.ts` itself stays a pure timing
+mechanism with no DOM/window concerns. `stepN(n)` runs `n` ticks
+synchronously and renders once, for a later Playwright harness to drive
+the game deterministically. Only `main.ts`, `src/render/loop.ts` and the
+new `src/render/loop.test.ts` changed.
+
 **R10. Art foundation.** Build `textures.ts` (procedural radial glow, star
 dot, soft shadow --- generated to an offscreen canvas once, cached, zero
 assets so CI's link check has nothing new to verify) and `materials.ts` (the
