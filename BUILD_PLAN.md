@@ -25,13 +25,13 @@ down --- under rotate-and-thrust control with real inertia, and is stopped
 softly by the frame edges rather than being pinned to the centre of them.
 
 A planet has a **gravity well**. Fly inside it and the well pulls you in for
-free, no fuel. Touch a planet **gently** --- meaning slowly *relative to the
-planet's own downward drift*, not slowly in absolute terms --- and you
-colonise it: colonists disembark, and your fuel and ammo top up. Touch it
-fast and nothing happens at all; you bounce off the moment and try again
-before it falls out of the frame. Asteroids tumble across the frame; hitting
-one costs colonists and destroys the asteroid, shooting one costs a little
-ammo and destroys it for free.
+free, no fuel. A planet is **solid**: you cannot fly through one. Touch it
+**gently** --- meaning slowly *relative to the planet's own downward drift*,
+not slowly in absolute terms --- and you colonise it: colonists disembark,
+and your fuel and ammo top up. Touch it fast and you crash: the surface
+still stops you cold, but the impact costs colonists, same as an asteroid.
+Asteroids tumble across the frame; hitting one costs colonists and destroys
+the asteroid, shooting one costs a little ammo and destroys it for free.
 
 Colonise every planet the level plans and you advance to a harder one:
 more planets, faster scroll, more asteroids. Run out of colonists or fuel
@@ -170,8 +170,10 @@ scroll.distance >= spec   -> spawn.activatePlanet -> a planned planet enters at 
 probability roll          -> spawn.decideAsteroid -> an asteroid enters at the top edge
 bullet overlaps asteroid  -> both removed, no colonist cost
 ship overlaps asteroid    -> reducer.applyAsteroidHit  -> colonists lost, asteroid gone, i-frames
-ship overlaps planet,
-  RELATIVE speed gentle   -> reducer.attemptLanding    -> colonists deposited, fuel/ammo topped
+ship contacts planet      -> collisions.resolvePlanetContact -> ship stopped at the surface,
+                                                                  radial velocity zeroed, ALWAYS
+  ... RELATIVE speed gentle -> reducer.attemptLanding  -> colonists deposited, fuel/ammo topped
+  ... RELATIVE speed fast   -> reducer.applyPlanetCrash -> colonists lost, no deposit, i-frames
 anything below the frame  -> reducer.despawn           -> removed
 colonized == required     -> reducer.advanceLevel      -> new plan, fresh colonists, faster scroll
 colonists == 0 or fuel==0 -> reducer.checkEndCondition -> run over
@@ -258,8 +260,10 @@ then disagree with what is drawn.
 velocity component --- it does not bounce, wrap, or kill.**
 Bouncing fights the Newtonian read and produces uncontrollable pinball.
 Wrapping makes the frame edges meaningless and destroys the "column of
-space" fiction. Killing on contact adds a second loss path and dilutes C2's
-single canonical one (Decision 3 still holds). A soft stop is the only option
+space" fiction. Killing on contact with the *frame edge itself* would add a
+loss path that has nothing to do with the game's one stated hazard set
+(asteroids, fuel, now planets --- R14): the edge is a boundary, not a body.
+A soft stop is the only option
 that leaves the edge legible as a boundary without making it a hazard.
 
 **R4. Light damping and a retro-thrust replace pure no-drag inertia.**
@@ -347,6 +351,40 @@ for identity (Decision 9 stands). Asteroids are desaturated grey and carry
 *no* hue, so they never compete with a planet for attention. Nothing is
 signalled by colour alone: the landing ring changes **thickness and dash
 pattern** as well as hue.
+
+**R14. Planets are solid: a fast touch is a collision, not a pass-through.**
+*Supersedes Decision 3.* The ship is a zero-radius point for collisions, so
+without an explicit contact rule a fast approach silently clips straight
+through a planet --- gravity pulls hard, the ship never gets a chance to
+correct, and nothing happens. That is a hole in the one mechanic the whole
+game teaches (the gravity ring, §6.6): "solid objects with collisions" means
+contact with a planet is resolved the **same way the frame edge already is**
+(Decision R3) --- the ship's position is stopped at the surface and the
+radial velocity component is zeroed, unconditionally, gentle or not. What
+happens *on top of* that stop still forks on relative speed (Decision R5):
+gentle --- `attemptLanding` deposits colonists and tops up fuel/ammo, same
+as before; fast --- `applyPlanetCrash` costs colonists (scaled by how far
+over threshold the impact was, `PLANET_CRASH_DAMAGE_SCALE`, mirroring
+`ASTEROID_DAMAGE_SCALE`'s formula shape) and grants the same
+`INVULN_DISTANCE` i-frames an asteroid hit does (Decision R9), so repeated
+overlap across ticks can't charge damage twice. This makes a planet a second
+genuine hazard alongside asteroids and fuel --- "knobs that can produce a
+bad outcome" --- rather than a body you can fly through by going fast enough
+to outrun the consequence, which was the opposite of what a gravity well is
+supposed to teach.
+
+**R15. Geometry is smooth and lit, not low-poly or faceted.**
+*Supersedes Decision 8 and §5.3 rule 4 as originally written.* A faceted
+icosahedron reads as a placeholder asset, not as "sleek and modern" ---
+visible flat triangles are the single fastest way to make a scene look
+unfinished. Planets, the ship hull and asteroids all use smooth-shaded
+geometry (`SphereGeometry`/`CapsuleGeometry`-family primitives with enough
+segments that no facet is visible at either marking viewport, `flatShading`
+never set) lit by the one rig in §5.3 rule 2, with a `MeshStandardMaterial`
+roughness/metalness pair chosen per class (matte rock for asteroids, a
+slight sheen for planets, a brighter clear-coat-like finish for the ship)
+so the *material* carries the visual distinction that faceting used to fake.
+Low-poly is not revived anywhere in this rewrite.
 
 ---
 
@@ -470,9 +508,11 @@ Rules that make it read as one system:
 3. **Every solid object casts a soft elliptical shadow** onto a plane just
    below the play plane, using the shadow texture --- not real shadow maps.
    Cheap, and it is the depth cue the camera tilt used to provide.
-4. **Geometry is low-poly and faceted, never smooth-shaded.**
-   `IcosahedronGeometry(r, 1)` for planets, `(r, 0)` with per-vertex jitter
-   for asteroids, `flatShading: true` throughout.
+4. **Geometry is smooth-shaded, never faceted or low-poly (Decision R15).**
+   High-segment `SphereGeometry(r, 48, 32)` for planets, a smoothed,
+   noise-displaced sphere (displacement baked into vertex positions once,
+   not per frame) for asteroids so they read as rugged rock without visible
+   facets, `flatShading` never set.
 5. **Motion is eased, never linear, wherever it is decorative.** Meter fills,
    flourishes and the gravity ring's fade use `cubic-bezier(.2,.8,.2,1)`;
    physics is never eased.
@@ -533,6 +573,7 @@ REQ_PER_RADIUS              0.9
 BASE_PLANETS_PER_LEVEL      3
 MAX_PLANETS_PER_LEVEL       10
 OPENING_PLANET_FRAC         0.55     first planet's y as a fraction of FRAME_HALF_HEIGHT
+PLANET_CRASH_DAMAGE_SCALE   0.08     colonists lost = ceil(excess relative speed * this) (R14)
 
 ASTEROID_MIN_RADIUS         14
 ASTEROID_MAX_RADIUS         42
@@ -852,22 +893,38 @@ biased near-horizontal by `ASTEROID_ANGLE_SPREAD`). Modify `state.ts` so
 consecutive planets are exactly `PLANET_GAP_SCROLL` apart in `atScroll`.
 *Serves:* R6, J1 --- the "planets spawn halfway through" fix.
 
-**R6. Relative-speed landing.** Modify `collisions.ts`:
-`isGentleLanding(ship, planet, planetVelocity)`. Thread `planetVelocity`
-(`{ x: planet.driftX, y: -scroll.speed }`) through `reducer.ts`. Tests: a
-ship at rest in the frame is **not** a gentle landing once
-`scroll.speed > threshold`; a ship matching the planet's drift exactly is
-gentle at any scroll speed; the existing absolute-speed cases still pass at
-`scroll.speed = 0`. *Serves:* R5, C2.
+**R6. Relative-speed landing, and solid planet contact.** Modify
+`collisions.ts`: `isGentleLanding(ship, planet, planetVelocity)` (relative
+speed, R5), plus new `resolvePlanetContact(ship, planet, planetVelocity):
+Ship` --- same shape as `clampToFrame` (Decision R3): if the ship overlaps
+the planet, push its position back to the surface along the
+planet-to-ship line and zero the radial velocity component, unconditionally
+(Decision R14). Thread `planetVelocity` (`{ x: planet.driftX, y:
+-scroll.speed }`) through `reducer.ts`. Tests: a ship at rest in the frame
+is **not** a gentle landing once `scroll.speed > threshold`; a ship matching
+the planet's drift exactly is gentle at any scroll speed; the existing
+absolute-speed cases still pass at `scroll.speed = 0`;
+`resolvePlanetContact` never leaves the ship's position inside the planet's
+radius, at any approach angle or speed; only the radial velocity component
+is zeroed, the tangential one survives (so a fast graze slides rather than
+snapping to a dead stop). *Serves:* R5, R14, C2.
 
-**R7. Reducer rewrite to the new tick order.** Reorder `tick` to §2.3
-exactly: drift → input → gravity → clamp → spawn → collide → despawn →
-level → end. Add `INVULN_DISTANCE` gating in `applyAsteroidHit`, and
-`despawn` by `isOutsideFrame` rather than by `DESPAWN_BEHIND`. Re-run every
-existing `spec/game.test.ts` case unchanged to confirm the loss and
-level-complete-precedence rules did not move. Tests: an asteroid overlapping
-for 10 consecutive ticks charges damage exactly once; an entity below the
-bottom edge is gone next tick. *Serves:* C2, R9, J2.
+**R7. Reducer rewrite to the new tick order, plus the planet-crash path.**
+Reorder `tick` to §2.3 exactly: drift → input → gravity → clamp → spawn →
+collide → despawn → level → end. In the collide phase, planet contact
+always runs `resolvePlanetContact` first, then forks on relative speed:
+gentle → `attemptLanding` (unchanged deposit/top-up); fast → new
+`applyPlanetCrash` (colonists lost via `PLANET_CRASH_DAMAGE_SCALE`, no
+deposit, same `INVULN_DISTANCE` gating as `applyAsteroidHit`). Add
+`INVULN_DISTANCE` gating to `applyAsteroidHit` too, and `despawn` by
+`isOutsideFrame` rather than by `DESPAWN_BEHIND`. Re-run every existing
+`spec/game.test.ts` case unchanged to confirm the loss and
+level-complete-precedence rules did not move. Tests: an asteroid or a
+planet-crash overlapping for 10 consecutive ticks charges damage exactly
+once; a fast planet approach stops the ship at the surface **and** loses
+colonists, in the same tick; a gentle approach still deposits, never
+crashes; an entity below the bottom edge is gone next tick. *Serves:* C2,
+R9, R14, J2.
 
 **R8. The simulation tier.** Build `spec/harness.ts`, the five pilots and
 all eight per-step invariants of §7.2, plus `spec/determinism.test.ts` with
@@ -895,15 +952,20 @@ layers, positions mutated in place, recycled at the bottom bound, rate from
 `scroll.speed`. Wire into `main.ts`. Verified by looking, and by a soak look
 for particle growth. *Serves:* the motion feedback the brief asks for, J1.
 
-**R12. Entity meshes.** Rewrite `ship-mesh.ts` (rocket group, additive plume
-scaling with `thrusting`, nose plume on retro, damage strobe, ground shadow),
-`planet-mesh.ts` (faceted sphere, identity hue, colonised lightness cut,
-colonist progress arc, gravity ring with all four states of §6.6, shadow),
-`asteroid-mesh.ts` (jittered icosahedron, tumble by `spin`, rim light, motion
-trail, 8-shard pooled debris burst) and `bullet-mesh.ts` (additive capsule +
-halo). All pooled through the existing `pool.ts`. Verified by looking at both
-viewports, thrust on and off, inside and outside a well. *Serves:* the
-graphics rework, R13, J1.
+**R12. Entity meshes, smooth-shaded throughout.** Rewrite `ship-mesh.ts`
+(rocket group, additive plume scaling with `thrusting`, nose plume on
+retro, damage strobe, ground shadow), `planet-mesh.ts` (smooth
+`SphereGeometry(r, 48, 32)`, no `flatShading`, identity hue, colonised
+lightness cut, colonist progress arc, gravity ring with all four states of
+§6.6, shadow), `asteroid-mesh.ts` (smooth noise-displaced sphere --- vertex
+positions perturbed then normals recomputed, never a jittered low-poly hull
+--- tumble by `spin`, rim light, motion trail, 8-shard pooled debris burst)
+and `bullet-mesh.ts` (additive capsule + halo). Material (roughness /
+metalness), not facet count, carries the visual distinction between planet
+identities. All pooled through the existing `pool.ts`. Verified by looking
+at both viewports, thrust on and off, inside and outside a well, confirming
+no visible facets on any body at rest or under rotation. *Serves:* the
+graphics rework, R15, R13, J1.
 
 **R13. HUD, indicator, overlay, input.** Extend `hud.ts` (meters with eased
 top-up and un-eased drain, low-fuel pulse, level pips, distance readout,
@@ -952,3 +1014,4 @@ C1, C6.
 | 8 | **This rewrite regresses a rule Phase A/B already got right.** | R7 explicitly re-runs the existing `spec/game.test.ts` unchanged | The existing tests are the contract; a Phase R step that needs one changed must say so in its own text and justify it, which only R6 currently does. |
 | 9 | **The starfield direction is an interpretation** (§5.4), not a confirmed requirement. | Asked at plan review; visible at R11 | One sign flip per layer. Nothing depends on it. |
 | 10 | Five minutes to an ending, with no instructions, for a stranger --- still the judged risk that no test covers. | R15, by watching someone else play | Slow `SCROLL_SPEED_BASE`, widen `LANDING_SPEED_THRESHOLD`, and lean harder on the gravity ring (§6.6) as the teacher. |
+| 11 | **Gravity now feeds a real collision, not a no-op**: a ship pulled in hard by a planet's gravity well can cross the gentle-landing threshold into a crash before the player can react, so `applyPlanetCrash` fires on approaches that read as "just gravity assist" rather than "pilot error." | R6 unit tests (threshold placement), R8 `seekPilot`/`panicPilot` near a well | Widen `LANDING_SPEED_THRESHOLD` relative to the gravity well's peak pull speed, or taper gravity strength in the last `SHIP_EDGE_MARGIN`-scale ring above the surface so terminal velocity at contact stays landable by default. |
