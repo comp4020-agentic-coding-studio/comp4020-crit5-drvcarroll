@@ -1,9 +1,24 @@
+/* §5.3's palette, defined once; mirrored exactly in materials.ts so the
+   DOM HUD and the WebGL scene cannot drift apart. */
+:root {
+  --void: #05060f;
+  --void-lift: #0c1024;
+  --accent: #6cf0ff;
+  --accent-dim: #2b6b78;
+  --warn: #ffb347;
+  --danger: #ff5470;
+  --rock: #7d8496;
+  --star-near: #ffffff;
+  --star-mid: #c9d4ff;
+  --star-far: #6b7699;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
   overflow: hidden; /* the game is the whole viewport, nothing scrolls */
-  background: #05070d;
+  background: var(--void);
   color: #1a1a1a;
   font-family: system-ui, sans-serif;
 }
@@ -73,11 +88,13 @@ a {
 }
 
 .meter[data-meter="colonists"] .meter-fill {
-  background: #6cf0ff;
+  background: var(--accent);
 }
 .meter[data-meter="fuel"] .meter-fill {
-  background: #ffb703;
+  background: var(--warn);
 }
+/* No §5.3 token for ammo: danger is reserved for the <25% critical state
+   (§6.3), so ammo keeps its own hue, paired with materials.ts's bullets. */
 .meter[data-meter="ammo"] .meter-fill {
   background: #ffe066;
 }

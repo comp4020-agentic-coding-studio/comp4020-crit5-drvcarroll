@@ -1,5 +1,6 @@
 import { DirectionalLight, HemisphereLight, OrthographicCamera, Scene, WebGLRenderer } from "three";
 import { FRAME_HALF_HEIGHT, FRAME_HALF_WIDTH } from "../game/constants.ts";
+import { PALETTE } from "./materials.ts";
 import { CAMERA_HEIGHT } from "./render-constants.ts";
 
 export interface RenderTarget {
@@ -35,6 +36,9 @@ export function createRenderTarget(canvas: HTMLCanvasElement): RenderTarget {
   camera.lookAt(0, 0, 0);
 
   const renderer = new WebGLRenderer({ canvas, antialias: true });
+  // Scene clear colour is --void (§5.3): the frame between drawn objects
+  // reads as space, not the canvas default black/transparent.
+  renderer.setClearColor(PALETTE.void);
 
   const target = { scene, camera, renderer };
   resizeRenderTarget(target, canvas.clientWidth, canvas.clientHeight);

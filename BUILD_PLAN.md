@@ -1017,6 +1017,32 @@ No visual change lands yet beyond the scene clear colour and light rig; this
 step exists so R11--R13 are assembly rather than invention. *Serves:* R8,
 R13, general interface rules.
 
+*Re-align (post-R10):* `materials.ts` exports `PALETTE` (the ten §5.3
+tokens, hex numbers) plus the render-constant aliases derived from it
+(`SHIP_COLOR`, `ENGINE_GLOW_COLOR`, `ASTEROID_COLOR`, the planet
+hue/saturation/lightness constants) --- one table, as the step asked.
+`render-constants.ts`'s pre-existing near-duplicate colours (`ENGINE_GLOW_
+COLOR` 0xff8a3d, `ASTEROID_COLOR` 0x8a8a8a, `PLANET_LIGHTNESS` 0.5) were
+drift, now resolved by making `render-constants.ts` a thin re-export of
+`materials.ts` plus its two remaining non-colour values (`CAMERA_HEIGHT`,
+`PLANET_COLONIZED_LIGHTNESS`, neither a §5.3 token) --- zero mesh-file
+changes needed. Ammo has no §5.3 token (danger is reserved for the <25%
+critical state, §6.3): its existing 0xffe066 stays, as `BULLET_COLOR` in
+materials.ts and as its own value in `styles.css`, justified by the
+ammo/bullet colour pairing rather than forced onto an ill-fitting token.
+`textures.ts` exports `createGlowTexture`/`createStarDotTexture`/
+`createShadowTexture`, each lazily building and caching one `CanvasTexture`
+on first call (module-level cache, never regenerated); the shadow texture
+is a circular soft blob, with the ellipse from §5.3 rule 3 left to a
+non-uniform plane scale at the R12/R13 call sites. No unit test exercises
+the canvas drawing: this repo's vitest run has no `document` at all by
+default, and jsdom has no working 2D context without the (uninstalled)
+`canvas` npm package, confirmed by hand before deciding to rely on reading
+the gradient-stop code instead. `scene.ts` gained one line,
+`renderer.setClearColor(PALETTE.void)`; the light rig was already correct
+and untouched. No mesh file changed beyond what the re-export made
+unnecessary to touch.
+
 **R11. Starfield.** Build `starfield.ts` per §5.4: three fixed-size `Points`
 layers, positions mutated in place, recycled at the bottom bound, rate from
 `scroll.speed`. Wire into `main.ts`. Verified by looking, and by a soak look
