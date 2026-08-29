@@ -1,70 +1,70 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-A reading-guide to how the work came together --- a map to your process, not an
-essay about it. Markers read this file and follow its citations; they don't
-trawl the repo for evidence you didn't point at, so if a moment mattered, cite
-it.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-One paragraph: the thing, and the idea behind it.
+**Colony Run** --- a top-down endless scroller in TypeScript and Three.js. The
+world falls past a fixed camera; you fly a rocket with real inertia, hunting
+planets to refill three tanks. Air is the only death clock and drains no matter
+what you do, so every planet is a decision: burn fuel to reach it, or coast and
+run the tank down. There is no on-screen prose anywhere --- the pulsing landing
+ring, the keycaps that depress under your fingers, and the three icon-labelled
+meters are the entire tutorial.
+
+The interesting part of this week wasn't the game. It was that I stopped
+prompting for features and started really polishing a harness that executes a plan.
 
 ## The moments that mattered
 
-Three or four for an assignment; fewer is fine for a weekly prototype. Keep the
-list short so each moment has room to do all four jobs:
+**1. The plan stopped being a design doc and became a build script.**
+The obvious move was to write an architecture doc and then prompt feature by
+feature. Instead I wrote [`BUILD_PLAN.md`](BUILD_PLAN.md) so that every step
+carries a fixed schema. I knew it was working when the first
+execution pass produced commits whose messages I could read back against the
+plan line by line without opening the diffs.
+[`744abf5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/744abf5),
+rewritten for the scrolling-world architecture at
+[`67b931d`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/67b931d).
 
-1. **what happened** --- the problem, or the thing that went wrong
-2. **what you did instead of the obvious thing** --- the call you made, and why
-   it beat the obvious one
-3. **how you knew it was right** --- the check you ran, the viewport you looked
-   at, what you read before accepting the diff
-4. **the citation** --- a commit or commit range, a `CLAUDE.md` change, a check
-   that went from red to green, a prompt paired with the commit it produced
+**2. `/execute_plan` --- one fresh subagent per step, never a long conversation.**
+I wrote a skill, committed here at
+[`skills/execute_plan/SKILL.md`](skills/execute_plan/SKILL.md),
+that decomposes a plan into atomic steps and then dispatches a *new* subagent
+for each one. The subagent never inherits the previous step's transcript; it
+reconstructs context from the repo, the plan, `CLAUDE.md`, and its step brief,
+and it owns the step all the way through commit. Each step runs a mandatory
+loop --- scaffold, implement, optimise, review as code, review against spec,
+review against design principles, `pnpm check`, look at it at 1920x1080 and
+390x844, commit --- and any finding sends it back to scaffold rather than
+forward. The obvious alternative, one long session, is exactly what produces
+drift: context fills with dead ends and the model starts optimising for the
+conversation instead of the repo. Sixteen steps, sixteen clean commits:
+[`1321fcd...1ea1039`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/compare/1321fcd...1ea1039).
 
-Jobs 2 and 3 are the ones the repo can't tell a reader on its own, so they're
-where the marks are. The strongest moments are the ones where a correction
-landed in the **harness** --- the standards and checks your work has to satisfy
---- rather than in a retry: a rule added to `CLAUDE.md`, a check wired up, an
-attempt thrown away. Retrying until it passes is the routine case, and changing
-what the work runs against is the skilled one.
+**3. Corrections landed in the plan, not in a retry.**
+The step-6 review found that relative-speed landing bites at level 0 --- the
+scroll speed already exceeded the landing threshold, so a pilot who merely
+pointed at a planet and burned always arrived too fast. The retry-shaped fix
+would have been to nudge a constant and move on. Instead the finding was
+written back into `BUILD_PLAN.md` as an amendment
+([`9c3b83b`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/9c3b83b),
+and the same pattern at
+[`b001575`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/b001575)
+and
+[`b295499`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/b295499)),
+so every *later* subagent read the corrected physics as a precondition. Backing
+it up is the Tier 2 simulation harness at
+[`b25d93d`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/b25d93d):
+five scripted pilots, eight invariants asserted on every one of ~30,000 ticks,
+and a committed determinism hash so a tuning change shows up as a diff instead
+of a vibe.
 
-Cite each moment as a link whose text is the commit hash or range and whose
-target is this repo's commit or compare URL, so a reader clicks straight to the
-evidence:
-
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
-
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
-
-> the prompt, verbatim
-
-Screenshots are welcome where one carries the verification better than a
-sentence does. Commit the file to this repo and link it with a **relative**
-path, which is what makes it render on GitHub: `![alt text](docs/before.png)`.
-Images don't count towards the word count and don't replace the citation.
-
-## Before you ship
-
-`pnpm check:evidence` verifies your citations resolve to real commits, that a
-reflection entry the marker reads is in `reflections/`, and that your
-`CLAUDE.md` is there --- before a marker ever opens the file. It checks that
-your map is traceable, not that it is good: the marker judges whether your
-small, deliberately chosen set of moments shows real judgement and reflection. A
-green check is not a substitute for that curation.
-
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+**4. Twenty minutes of hand-driven polish on top was enough.**
+After the plan executed, I sat with Opus and played the thing. Seven changes
+came out of that session: planets that mysteriously stopped spawning, colonists
+replaced by air/fuel/ammo, an escalating asteroid curve, the landing ring, the
+starfield, the keycap cluster, resource icons, and two corrections I made
+mid-flight, that space has no friction and that there is no brake, only turning
+around and burning. The real benefit here is that i needed a short amount of 
+time interacting with the finished code at the end, because the plan
+had left the codebase in a state where a live change was cheap.
+[`282cd5c`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-drvcarroll/commit/282cd5c).
