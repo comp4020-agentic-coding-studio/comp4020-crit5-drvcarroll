@@ -1,10 +1,14 @@
 // Tier 2 --- simulation (§7.2). One harness, five pilots, the eight
 // invariants asserted on every tick of every run. No browser, no flake.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { simulate, SIM_DT } from "./harness.ts";
 import { idlePilot, thrustPilot, seekPilot, createPanicPilot, wallPilot } from "./pilots.ts";
 import { assertInvariants } from "./simInvariants.ts";
 import type { GameState } from "../src/game/types.ts";
+
+// Every test here is a multi-thousand-step sim with per-tick invariant
+// checks. The 5s default is a unit-test budget; CI runners are slower.
+vi.setConfig({ testTimeout: 30000 });
 
 const SEED = 42;
 
@@ -55,8 +59,7 @@ describe("thrustPilot: holds W forever", () => {
 });
 
 describe("seekPilot: proportional controller toward the most urgent planet", () => {
-  // 28800 steps with a per-tick invariant check is real work, not a hang;
-  // the default 5s budget is for a typical unit test, not this one.
+  // 28800 steps with a per-tick invariant check is real work, not a hang.
   it("resupplies often enough to outlive the air clock many times over", () => {
     const steps = Math.ceil(480 / SIM_DT);
     const seen = new Set<number>();
@@ -78,7 +81,7 @@ describe("seekPilot: proportional controller toward the most urgent planet", () 
     const lostAt = history.findIndex((s) => s.end.status === "lost");
     expect(landings).toBeGreaterThanOrEqual(10);
     expect(lostAt === -1 ? steps * SIM_DT : lostAt * SIM_DT).toBeGreaterThanOrEqual(120);
-  }, 30000);
+  });
 });
 
 describe("panicPilot: uniformly random input", () => {
