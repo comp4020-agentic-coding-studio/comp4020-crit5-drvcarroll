@@ -12,85 +12,83 @@ import {
   checkEndCondition,
   tick,
 } from "../src/game/reducer.ts";
-import {
-  colonistBatchForLevel,
-  generateLevelPlan,
-  planetsRequiredForLevel,
-} from "../src/game/level.ts";
-import { scrollSpeedForLevel } from "../src/game/scroll.ts";
+import { asteroidSpawnRatePerSecond } from "../src/game/spawn.ts";
 
 const SEED = { seed: 1 };
 const NO_INPUT = {
   rotateLeft: false,
   rotateRight: false,
   thrust: false,
-  retro: false,
   fire: false,
 };
 
 describe("C2: a wrong move is possible, and play ends somewhere", () => {
-  it("fuel hitting zero before the level's planet count is reached is a loss", () => {
+  it("air is the death clock --- empty air is a loss, empty fuel is not", () => {
     const base = createInitialState(SEED);
-    const state = { ...base, ship: { ...base.ship, fuel: 0 } };
-    expect(checkEndCondition(state)).toEqual({ status: "lost", cause: "fuel" });
+    expect(checkEndCondition({ ...base, ship: { ...base.ship, air: 0 } })).toEqual({
+      status: "lost",
+      cause: "air",
+    });
+    expect(checkEndCondition({ ...base, ship: { ...base.ship, fuel: 0, ammo: 0 } })).toEqual({
+      status: "playing",
+    });
   });
 
-  it("an asteroid hit that zeroes colonists before the requirement is met is a loss", () => {
+  it("an asteroid hit that vents the last of the air is a loss", () => {
     const base = createInitialState(SEED);
     const asteroid = { id: 1, position: base.ship.position, velocity: { x: 0, y: 0 }, radius: 20, spin: 0 };
     const hit = applyAsteroidHit(
-      { ...base, ship: { ...base.ship, colonists: 1 }, asteroids: [asteroid] },
+      { ...base, ship: { ...base.ship, air: 0.01 }, asteroids: [asteroid] },
       1,
     );
-    expect(hit.ship.colonists).toBe(0);
-    expect(checkEndCondition(hit)).toEqual({ status: "lost", cause: "colonists" });
+    expect(hit.ship.air).toBe(0);
+    expect(checkEndCondition(hit)).toEqual({ status: "lost", cause: "air" });
   });
 
   it("tick freezes the run once it has been lost --- play has ended", () => {
     const base = createInitialState(SEED);
-    const lost = { ...base, end: { status: "lost" as const, cause: "fuel" as const } };
+    const lost = { ...base, end: { status: "lost" as const, cause: "air" as const } };
     expect(tick(lost, { ...NO_INPUT, thrust: true }, 1 / 60)).toBe(lost);
   });
 });
 
-describe("C2 / J2: level-complete takes precedence over a same-instant colonist-zero", () => {
-  it("the landing that deposits the last colonist and also completes the level is a win, not a loss", () => {
+describe("C2: landing is the only way to buy more time", () => {
+  it("a gentle touchdown refills every tank at once", () => {
     const base = createInitialState(SEED);
-    const oneAway = {
-      ...base,
-      level: { ...base.level, colonizedCount: base.level.planetsRequired - 1 },
-    };
-    const planet = oneAway.planets[0];
+    const planet = base.planets[0];
     const arriving = {
-      ...oneAway,
+      ...base,
       ship: {
-        ...oneAway.ship,
-        colonists: planet.colonistsRequired,
+        ...base.ship,
+        air: 0.2,
+        fuel: 0.2,
+        ammo: 0.2,
         position: planet.position,
         // Gentle is relative to the planet's own drift (R5), not zero.
-        velocity: { x: planet.driftX, y: -scrollSpeedForLevel(oneAway.level.index) },
+        velocity: { x: planet.driftX, y: -base.scroll.speed },
       },
     };
 
     const landed = attemptLanding(arriving, planet.id);
 
-    expect(landed.ship.colonists).toBe(0);
-    expect(landed.level.colonizedCount).toBe(arriving.level.planetsRequired);
-    // Loss check alone must NOT see this as a loss --- tick()'s ordering
-    // (level-complete resolved first) is what makes it a win overall.
-    expect(checkEndCondition(landed)).toEqual({ status: "playing" });
+    expect(landed.ship.air).toBe(1);
+    expect(landed.ship.fuel).toBe(1);
+    expect(landed.ship.ammo).toBe(1);
+    expect(landed.planets.find((p) => p.id === planet.id)?.colonized).toBe(true);
   });
 });
 
-describe("level progression is generated, not hand-authored", () => {
-  it("planetsRequiredForLevel grows with level index", () => {
-    expect(planetsRequiredForLevel(3)).toBeGreaterThan(planetsRequiredForLevel(1));
+describe("the run escalates, and never runs dry of planets", () => {
+  it("asteroids arrive faster the further the run goes", () => {
+    expect(asteroidSpawnRatePerSecond(30_000)).toBeGreaterThan(asteroidSpawnRatePerSecond(0));
   });
 
-  it("a fresh colonist batch exactly covers the level's total planet requirement", () => {
-    const { plan } = generateLevelPlan(2, SEED);
-    const total = plan.planets.reduce((sum, p) => sum + p.colonistsRequired, 0);
-    expect(colonistBatchForLevel(plan)).toBe(total);
+  it("a planet is always already booked ahead on the odometer", () => {
+    let state = createInitialState(SEED);
+    for (let i = 0; i < 120 * 120; i++) {
+      state = tick(state, NO_INPUT, 1 / 120);
+      expect(state.nextPlanetScroll).toBeGreaterThan(state.scroll.distance);
+    }
   });
 });
 

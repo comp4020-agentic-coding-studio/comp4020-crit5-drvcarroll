@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  AIR_DRAIN_RATE,
   FRAME_HALF_HEIGHT,
   FRAME_HALF_WIDTH,
-  SHIP_DAMPING,
   SHIP_EDGE_MARGIN,
 } from "./constants.ts";
 import { applyInput } from "./ship.ts";
@@ -15,7 +15,6 @@ const NO_INPUT: Input = {
   rotateLeft: false,
   rotateRight: false,
   thrust: false,
-  retro: false,
   fire: false,
 };
 
@@ -24,10 +23,11 @@ function ship(overrides: Partial<Ship> = {}): Ship {
     position: { x: 0, y: 0 },
     heading: 0,
     velocity: { x: 0, y: 0 },
-    colonists: 10,
+    air: 1,
     fuel: 1,
     ammo: 1,
     thrusting: false,
+    fireCooldown: 0,
     invulnUntil: -Infinity,
     ...overrides,
   };
@@ -56,58 +56,49 @@ describe("applyInput", () => {
     expect(next.fuel).toBe(0);
   });
 
-  it("integrates position from the damped velocity", () => {
-    const moving = ship({ velocity: { x: 10, y: 0 } });
+  it("coasts forever: no drag, so velocity is unchanged without thrust", () => {
+    const moving = ship({ velocity: { x: 10, y: -4 } });
     const next = applyInput(moving, NO_INPUT, 2);
-    const dampedVx = 10 * Math.exp(-SHIP_DAMPING * 2);
-    expect(next.velocity.x).toBeCloseTo(dampedVx, 10);
-    expect(next.position.x).toBeCloseTo(dampedVx * 2, 10);
-    expect(next.position.y).toBeCloseTo(0, 10);
+    expect(next.velocity).toEqual({ x: 10, y: -4 });
+    expect(next.position.x).toBeCloseTo(20, 10);
+    expect(next.position.y).toBeCloseTo(-8, 10);
   });
 
-  describe("damping", () => {
-    it("decays speed but never reverses its sign", () => {
-      const moving = ship({ velocity: { x: 100, y: -40 } });
-      const next = applyInput(moving, NO_INPUT, 1 / 30);
-      expect(next.velocity.x).toBeGreaterThan(0);
-      expect(next.velocity.x).toBeLessThan(100);
-      expect(next.velocity.y).toBeLessThan(0);
-      expect(next.velocity.y).toBeGreaterThan(-40);
-    });
-
-    it("composes identically across two small steps and one large step", () => {
-      const start = ship({ velocity: { x: 60, y: -25 } });
-      const oneSmallStep = applyInput(start, NO_INPUT, 1 / 60);
-      const twoSmallSteps = applyInput(oneSmallStep, NO_INPUT, 1 / 60);
-      const oneLargeStep = applyInput(start, NO_INPUT, 1 / 30);
-      expect(twoSmallSteps.velocity.x).toBeCloseTo(oneLargeStep.velocity.x, 6);
-      expect(twoSmallSteps.velocity.y).toBeCloseTo(oneLargeStep.velocity.y, 6);
-    });
+  it("counter-thrust is the only brake: flip 180 and burn to reverse", () => {
+    // Coasting +x at 100, pointed -x. Burning must slow, stop, then reverse.
+    let s = ship({ velocity: { x: 100, y: 0 }, heading: Math.PI });
+    const burn = { ...NO_INPUT, thrust: true };
+    const slowed = applyInput(s, burn, 0.1);
+    expect(slowed.velocity.x).toBeLessThan(100);
+    expect(slowed.velocity.x).toBeGreaterThan(0);
+    s = slowed;
+    for (let i = 0; i < 120; i++) s = applyInput(s, burn, 1 / 60);
+    expect(s.velocity.x).toBeLessThan(0);
   });
 
-  it("retro-thrust reduces forward speed", () => {
-    const moving = ship({ velocity: { x: 100, y: 0 }, heading: 0 });
-    const next = applyInput(moving, { ...NO_INPUT, retro: true }, 1 / 60);
-    expect(next.velocity.x).toBeLessThan(moving.velocity.x);
-    expect(next.fuel).toBeLessThan(1);
+  it("drains air at a constant rate whatever the pilot does", () => {
+    const idle = applyInput(ship(), NO_INPUT, 1);
+    const busy = applyInput(ship(), { ...NO_INPUT, thrust: true, rotateLeft: true }, 1);
+    expect(idle.air).toBeCloseTo(1 - AIR_DRAIN_RATE, 10);
+    expect(busy.air).toBeCloseTo(idle.air, 10);
   });
 
-  // Retro adds no acceleration with no fuel, but damping still decays it.
-  it("retro-thrust adds no acceleration once fuel is empty", () => {
-    const empty = ship({ velocity: { x: 100, y: 0 }, fuel: 0 });
-    const next = applyInput(empty, { ...NO_INPUT, retro: true }, 1 / 60);
-    const expectedVx = 100 * Math.exp(-SHIP_DAMPING / 60);
-    expect(next.velocity.x).toBeCloseTo(expectedVx, 10);
-    expect(next.velocity.y).toBe(0);
-    expect(next.fuel).toBe(0);
+  it("never drains air below empty", () => {
+    const gasping = ship({ air: 0.001 });
+    expect(applyInput(gasping, NO_INPUT, 10).air).toBe(0);
   });
 
-  it("sets thrusting only while forward thrust fires, not on retro", () => {
+  it("ticks the fire cooldown down to zero and no further", () => {
+    expect(applyInput(ship({ fireCooldown: 0.5 }), NO_INPUT, 0.2).fireCooldown).toBeCloseTo(0.3, 10);
+    expect(applyInput(ship({ fireCooldown: 0.1 }), NO_INPUT, 5).fireCooldown).toBe(0);
+  });
+
+  it("sets thrusting only while the engine actually burns", () => {
     const withThrust = applyInput(ship(), { ...NO_INPUT, thrust: true }, 1 / 60);
-    const withRetro = applyInput(ship(), { ...NO_INPUT, retro: true }, 1 / 60);
+    const dry = applyInput(ship({ fuel: 0 }), { ...NO_INPUT, thrust: true }, 1 / 60);
     const withNeither = applyInput(ship(), NO_INPUT, 1 / 60);
     expect(withThrust.thrusting).toBe(true);
-    expect(withRetro.thrusting).toBe(false);
+    expect(dry.thrusting).toBe(false);
     expect(withNeither.thrusting).toBe(false);
   });
 

@@ -386,6 +386,45 @@ slight sheen for planets, a brighter clear-coat-like finish for the ship)
 so the *material* carries the visual distinction that faceting used to fake.
 Low-poly is not revived anywhere in this rewrite.
 
+**R16. Levels are gone; the run is endless and paced by the odometer.**
+*Supersedes Decisions 3 and 6 and R12, and deletes `src/game/level.ts`.* A finite
+`LevelPlan` array was the direct cause of planets ceasing to spawn: a level
+only ended on completion, so a single missed landing left
+`decidePlanetActivation` indexing past the end of the plan forever, and the
+player coasted through an empty universe with no way to refuel. Planets are
+now scheduled off `state.nextPlanetScroll`: whenever the odometer passes it,
+one planet is rolled and the next is booked `PLANET_GAP_SCROLL` further on.
+The schedule is therefore always ahead of the odometer --- an invariant
+asserted every tick in `spec/simInvariants.ts`. Difficulty comes from two
+monotonic curves of `scroll.distance` instead of a level index:
+`scrollSpeedForDistance` and `asteroidSpawnRatePerSecond`, both capped so a
+long run stays flyable.
+
+**R17. Three tanks; air is the only death clock.**
+*Supersedes Decision 2.* Colonists are removed. The ship carries `air`
+(drains at a constant rate whatever the pilot does --- the clock that makes
+landing urgent), `fuel` (spent only while the engine burns) and `ammo`
+(spent per shot, rate-limited by `Ship.fireCooldown` so a held trigger
+cannot empty the clip in two ticks of a 120Hz loop). A gentle touchdown
+refills all three. Only empty air ends the run: an empty tank or an empty
+clip is a squeeze that makes the *next* lungful harder to reach, which is a
+more interesting failure than an instant one.
+
+**R18. Space has no friction: momentum is conserved, and there is no brake.**
+*Supersedes the damping term in Decision 4.* `SHIP_DAMPING` is deleted, and
+so is retro-thrust and its `S` binding --- `Input` carries no `retro`. A
+ship that stops thrusting coasts at exactly its current velocity forever.
+The only way to slow down is to rotate and burn against the direction of
+travel, which makes turning-and-burning the core skill of the game rather
+than a flourish on top of an autocorrecting drift.
+
+**R19. The on-screen affordances stay wordless (C3).**
+The keycap cluster (bottom-right), the resource icons under each meter, and
+the pulsing landing ring on each unspent planet are all the tutorial there
+is. The keycaps depress on press, so a first keystroke explains the rest.
+Every glyph is a stroked SVG path, never a text node, so the C3 "no
+on-screen prose" test over the built page still passes by construction.
+
 ---
 
 ## 5. Architecture

@@ -8,7 +8,6 @@ export const NO_INPUT: Input = {
   rotateLeft: false,
   rotateRight: false,
   thrust: false,
-  retro: false,
   fire: false,
 };
 
@@ -16,7 +15,7 @@ export const idlePilot: Pilot = () => NO_INPUT;
 
 export const thrustPilot: Pilot = () => ({ ...NO_INPUT, thrust: true });
 
-// WASD convention: W thrust, A rotateLeft, D rotateRight, S retro.
+// WASD convention: W thrust, A rotateLeft, D rotateRight.
 export const wallPilot: Pilot = () => ({ ...NO_INPUT, thrust: true, rotateRight: true });
 
 // Every planet drifts down at the same rate, so the one with the lowest
@@ -105,7 +104,6 @@ export function createPanicPilot(seed: number): Pilot {
     rotateLeft: roll(),
     rotateRight: roll(),
     thrust: roll(),
-    retro: roll(),
     fire: roll(),
   });
 }

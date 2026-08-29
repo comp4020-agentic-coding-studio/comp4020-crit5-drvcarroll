@@ -44,20 +44,20 @@ export function assertInvariants(curr: GameState, prev: GameState | null): void 
   // 2. No NaN/Infinity anywhere in the state tree.
   assertFiniteDeep(curr, "state");
 
-  // 3. fuel, ammo in [0, 1]; colonists >= 0.
-  expect(curr.ship.fuel).toBeGreaterThanOrEqual(0);
-  expect(curr.ship.fuel).toBeLessThanOrEqual(1);
-  expect(curr.ship.ammo).toBeGreaterThanOrEqual(0);
-  expect(curr.ship.ammo).toBeLessThanOrEqual(1);
-  expect(curr.ship.colonists).toBeGreaterThanOrEqual(0);
+  // 3. Every tank stays a fraction: air, fuel, ammo all in [0, 1].
+  for (const tank of ["air", "fuel", "ammo"] as const) {
+    expect(curr.ship[tank], tank).toBeGreaterThanOrEqual(0);
+    expect(curr.ship[tank], tank).toBeLessThanOrEqual(1);
+  }
 
   // 4. The leak guard.
   expect(curr.asteroids.length).toBeLessThanOrEqual(MAX_ASTEROIDS);
   expect(curr.bullets.length).toBeLessThanOrEqual(MAX_BULLETS);
   expect(curr.planets.length).toBeLessThanOrEqual(MAX_PLANETS);
 
-  // 8. Never over-colonized.
-  expect(curr.level.colonizedCount).toBeLessThanOrEqual(curr.level.planetsRequired);
+  // 8. The planet schedule always stays ahead of the odometer, so the
+  // run can never run out of places to refuel (the endless-run fix).
+  expect(curr.nextPlanetScroll).toBeGreaterThan(curr.scroll.distance);
 
   if (!prev) return;
 
@@ -69,18 +69,12 @@ export function assertInvariants(curr: GameState, prev: GameState | null): void 
     return; // frozen --- none of the drift invariants below apply.
   }
 
-  // A level-up resets scroll.distance to 0 and planets to [] the same
-  // tick (advanceLevel) --- invariants 5 and 6 are per-level, so skip
-  // them across that boundary rather than treating the reset as a bug.
-  if (curr.level.index !== prev.level.index) return;
-
-  // 5. scroll.distance is strictly non-decreasing within a level.
+  // 5. The odometer only ever runs forward.
   expect(curr.scroll.distance).toBeGreaterThanOrEqual(prev.scroll.distance);
 
   // 6. Every planet present before and after this tick fell by at
   // least scroll.speed * dt * 0.99 --- using the speed the drift phase
-  // actually ran at, i.e. prev's (advanceLevel only changes it for the
-  // *next* tick's drift, and resets planets to [] the same tick anyway).
+  // actually ran at, i.e. prev's.
   const minFall = prev.scroll.speed * SIM_DT * 0.99;
   const prevById = new Map(prev.planets.map((p) => [p.id, p]));
   for (const planet of curr.planets) {

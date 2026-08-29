@@ -25,6 +25,10 @@ export const ASTEROID_COLOR = PALETTE.rock;
 // its own hue, paired with the bullets it fires.
 export const BULLET_COLOR = 0xffe066;
 
+// The pulsing "land here" halo on an unspent planet: accent, the same
+// token the ship wears, so the affordance reads as "yours to reach".
+export const LANDING_RING_COLOR = PALETTE.accent;
+
 // Per-id hue (Decision 9): a fixed golden-angle step spaces ids evenly
 // around the wheel instead of drawing from the full random range, so
 // nearby ids can't land on near-identical hues by chance.

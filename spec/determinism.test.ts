@@ -7,10 +7,11 @@ import { seekPilot } from "./pilots.ts";
 const SEED = 42;
 const STEPS = 2000;
 
-// Committed hash for seekPilot @ seed 42, STEPS steps (see BUILD_PLAN.md
-// R8 re-align note). Not meaningful in itself --- its stability is the
-// evidence; a diff here on an unrelated change is a tuning regression.
-const COMMITTED_HASH = "375335b5";
+// Committed hash for seekPilot @ seed 42, STEPS steps. Re-baselined for
+// the air/fuel/ammo model and frictionless flight. Not meaningful in
+// itself --- its stability is the evidence; a diff here on an unrelated
+// change is a tuning regression.
+const COMMITTED_HASH = "76a7369a";
 
 // A tiny non-cryptographic hash (FNV-1a): only needs to be stable and
 // cheap, not secure --- no need for a crypto dependency in a test file.

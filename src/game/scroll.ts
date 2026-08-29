@@ -1,23 +1,26 @@
 import {
   SCROLL_SPEED_BASE,
+  SCROLL_SPEED_GROWTH,
   SCROLL_SPEED_MAX,
-  SCROLL_SPEED_PER_LEVEL,
 } from "./constants.ts";
 import type { Scroll, Vec2 } from "./types.ts";
 
-// The world's drift speed for a given level index: increases per level,
-// capped so late levels stay flyable (BUILD_PLAN.md 5.5).
-export function scrollSpeedForLevel(index: number): number {
+// The world's drift speed at a given odometer distance: the run is endless,
+// so speed ramps with distance travelled and caps so a long run stays
+// flyable (BUILD_PLAN.md 5.5).
+export function scrollSpeedForDistance(distance: number): number {
   return Math.min(
-    SCROLL_SPEED_BASE + index * SCROLL_SPEED_PER_LEVEL,
+    SCROLL_SPEED_BASE + distance * SCROLL_SPEED_GROWTH,
     SCROLL_SPEED_MAX,
   );
 }
 
-// Accumulates odometer distance at the scroll's current speed. Speed is
-// recomputed by the caller on level advance, not every tick.
+// Accumulates odometer distance at the current speed, then re-derives the
+// speed the *next* tick will drift at. speed is a cache of the curve above,
+// never an independent value.
 export function advanceScroll(scroll: Scroll, dt: number): Scroll {
-  return { ...scroll, distance: scroll.distance + scroll.speed * dt };
+  const distance = scroll.distance + scroll.speed * dt;
+  return { distance, speed: scrollSpeedForDistance(distance) };
 }
 
 // Drifts every entity's position down by speed*dt --- the world moving

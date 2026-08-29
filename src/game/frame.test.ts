@@ -11,10 +11,11 @@ function ship(overrides: Partial<Ship> = {}): Ship {
     position: { x: 0, y: 0 },
     heading: 0,
     velocity: { x: 0, y: 0 },
-    colonists: 10,
+    air: 1,
     fuel: 1,
     ammo: 1,
     thrusting: false,
+    fireCooldown: 0,
     invulnUntil: -Infinity,
     ...overrides,
   };

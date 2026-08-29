@@ -1,27 +1,24 @@
-import { FRAME_HALF_HEIGHT, OPENING_PLANET_FRAC } from "./constants.ts";
-import { colonistBatchForLevel, generateLevelPlan, planetsRequiredForLevel } from "./level.ts";
-import { scrollSpeedForLevel } from "./scroll.ts";
+import { FRAME_HALF_HEIGHT, OPENING_PLANET_FRAC, PLANET_GAP_SCROLL } from "./constants.ts";
+import { rollPlanetSpec } from "./spawn.ts";
+import { scrollSpeedForDistance } from "./scroll.ts";
 import type { GameState, Planet } from "./types.ts";
 import type { RngState } from "./rng.ts";
 
-// A fresh run: level 0's plan generated whole, its first planet already
-// placed inside the frame at OPENING_PLANET_FRAC (not scheduled at its
-// plan-generated atScroll) so the opening frame has something in view to
-// react to (the affordance the "no instructions" spec line asks for), ship
-// pointing "up" (the direction scroll and the world both advance in).
+// A fresh run: full tanks, one planet already placed inside the frame at
+// OPENING_PLANET_FRAC (rather than waiting on the odometer) so the opening
+// frame has something in view to react to --- the affordance the "no
+// instructions" spec line asks for --- and the ship pointing "up", the
+// direction scroll and the world both advance in.
 export function createInitialState(seed: RngState): GameState {
-  const { plan, rng } = generateLevelPlan(0, seed);
-  const planetsRequired = planetsRequiredForLevel(0);
-  const firstSpec = plan.planets[0];
+  const { spec, rng } = rollPlanetSpec(seed);
 
   const firstPlanet: Planet = {
     id: 1,
-    position: { x: firstSpec.lane, y: FRAME_HALF_HEIGHT * OPENING_PLANET_FRAC },
-    radius: firstSpec.radius,
-    colonistsRequired: firstSpec.colonistsRequired,
+    position: { x: spec.lane, y: FRAME_HALF_HEIGHT * OPENING_PLANET_FRAC },
+    radius: spec.radius,
     colonized: false,
-    driftX: firstSpec.driftX,
-    spin: firstSpec.spin,
+    driftX: spec.driftX,
+    spin: spec.spin,
   };
 
   return {
@@ -29,26 +26,20 @@ export function createInitialState(seed: RngState): GameState {
       position: { x: 0, y: 0 },
       heading: Math.PI / 2,
       velocity: { x: 0, y: 0 },
-      colonists: colonistBatchForLevel(plan),
+      air: 1,
       fuel: 1,
       ammo: 1,
       thrusting: false,
+      fireCooldown: 0,
       invulnUntil: -Infinity,
     },
     planets: [firstPlanet],
     asteroids: [],
     bullets: [],
-    level: {
-      index: 0,
-      plan,
-      spawnedCount: 1,
-      colonizedCount: 0,
-      planetsRequired,
-    },
-    scroll: { speed: scrollSpeedForLevel(0), distance: 0 },
+    scroll: { speed: scrollSpeedForDistance(0), distance: 0 },
     rng,
     end: { status: "playing" },
     nextId: 2,
-    flourish: null,
+    nextPlanetScroll: PLANET_GAP_SCROLL,
   };
 }

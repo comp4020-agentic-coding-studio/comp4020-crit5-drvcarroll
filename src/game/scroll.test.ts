@@ -1,30 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { SCROLL_SPEED_MAX } from "./constants.ts";
-import { advanceScroll, driftEntities, scrollSpeedForLevel } from "./scroll.ts";
+import { advanceScroll, driftEntities, scrollSpeedForDistance } from "./scroll.ts";
 import type { Scroll, Vec2 } from "./types.ts";
 
-describe("scrollSpeedForLevel", () => {
-  it("is monotonic non-decreasing in level index", () => {
-    let prev = scrollSpeedForLevel(0);
-    for (let i = 1; i <= 20; i++) {
-      const speed = scrollSpeedForLevel(i);
+describe("scrollSpeedForDistance", () => {
+  it("is monotonic non-decreasing in distance travelled", () => {
+    let prev = scrollSpeedForDistance(0);
+    for (let i = 1; i <= 40; i++) {
+      const speed = scrollSpeedForDistance(i * 1000);
       expect(speed).toBeGreaterThanOrEqual(prev);
       prev = speed;
     }
   });
 
-  it("caps at SCROLL_SPEED_MAX for high levels", () => {
-    expect(scrollSpeedForLevel(100)).toBe(SCROLL_SPEED_MAX);
+  it("caps at SCROLL_SPEED_MAX however long the run gets", () => {
+    expect(scrollSpeedForDistance(10_000_000)).toBe(SCROLL_SPEED_MAX);
   });
 });
 
 describe("advanceScroll", () => {
-  it("distance strictly increases for dt > 0, speed unchanged", () => {
+  it("accumulates distance at the current speed, then re-derives speed", () => {
     const scroll: Scroll = { speed: 100, distance: 50 };
     const next = advanceScroll(scroll, 0.5);
-    expect(next.distance).toBeGreaterThan(scroll.distance);
     expect(next.distance).toBe(100);
-    expect(next.speed).toBe(scroll.speed);
+    expect(next.speed).toBe(scrollSpeedForDistance(100));
+  });
+
+  it("never slows the world down", () => {
+    let scroll: Scroll = { speed: scrollSpeedForDistance(0), distance: 0 };
+    for (let i = 0; i < 200; i++) {
+      const next = advanceScroll(scroll, 1);
+      expect(next.speed).toBeGreaterThanOrEqual(scroll.speed);
+      scroll = next;
+    }
   });
 
   it("does not mutate its input", () => {

@@ -10,15 +10,15 @@ const KEY_MAP: Record<string, keyof Input> = {
   " ": "fire",
 };
 
-// Keyboard (WASD + arrow-key equivalents + space) and the on-screen touch
-// pads both drive the same Input record --- src/game/* never knows which
-// one was used (Decision 6).
+// Keyboard (W/A/D + arrow-key equivalents + space) and the on-screen
+// keycaps both drive the same Input record --- src/game/* never knows which
+// one was used (Decision 6). The caps carry .pad as well as .key: one
+// element is both the touch target and the hint that the key exists.
 export function createInputSource(root: ParentNode): () => Input {
   const state: Input = {
     rotateLeft: false,
     rotateRight: false,
     thrust: false,
-    retro: false,
     fire: false,
   };
 
